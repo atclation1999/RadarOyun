@@ -71,7 +71,7 @@
     font-weight: bold;
     font-size: 14px;
     font-family: Arial, sans-serif;
-    background: rgba(50, 50, 50, 0.8);
+    background: rgba(50, 50, 50, 0.2);
     padding: 5px 10px;
     border: 1px solid #0f0;
     border-radius: 3px;
@@ -182,7 +182,7 @@
         white-space: nowrap;
         z-index: 5;
         color: white !important; /* Metin rengi beyaz */
-        background: rgba(50, 50, 50, 0.3); /* Saydamlık */
+        background: rgba(50, 50, 50, 0.0); /* Saydamlık */
         padding: 3px 6px;
         border: 1px solid #fff;
         border-radius: 3px;
@@ -336,27 +336,35 @@
         border: none;
     }
 	/* AIRMISS Alert */
+/* AIRMISS Alert */
 #airmissAlert {
     position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    top: 50%; /* Dikeyde ortalamak için */
+    left: 30px; /* Sol kenardan bırakılacak boşluk (örneğin 30 piksel) */
+    transform: translateY(-50%); /* Sadece dikeyde ortalamak için */
+    /* Eski transform kuralı: transform: translate(-50%, -50%); */
+    
     background: rgba(0, 0, 0, 0.8);
     padding: 20px;
     border: 2px solid red;
     border-radius: 10px;
     color: red;
     font-family: monospace;
-    font-size: 48px;
+    font-size: 48px; /* Bu font boyutu uyarıyı geniş yapabilir */
     font-weight: bold;
-    text-align: center;
+    text-align: center; /* Metni kutu içinde ortala */
     z-index: 50;
-    display: none;
+    display: none; /* Başlangıçta gizli */
     text-shadow: 2px 2px 4px black;
+    
+    /* Uyarı kutusunun genişliğinin ekranı aşmasını engellemek için */
+    /* max-width: calc(100vw - 60px); */ /* Sol ve sağ boşluklar düşünülerek (isteğe bağlı) */
+    /* Örneğin, sol boşluk 30px ise, sağda da en az 30px kalması için */
 }
+
 #airmissAlert span {
     display: block;
-    FONT-SIZE: 24px;
+    font-size: 24px; /* Bu font boyutu da alt metin için oldukça büyük */
     margin-top: 10px;
     color: white;
 }
@@ -376,14 +384,45 @@
 #generateScenarioBtn:active {
     background-color: #3d8b40;
 }
+
+#headingValues div:hover { /* Heading listesindeki her bir derece için */
+    background-color: #0f0; /* Yeşil arka plan */
+    color: black;           /* Siyah yazı */
+    box-shadow: 0 0 8px #0f0; /* Yeşil bir "glow" efekti için örnek */
+}
+
+/* Manuel giriş butonu için basit stil */
+#submitManualHeading {
+    padding: 3px 6px;
+    font-size: 11px;
+    background-color: #4CAF50;
+    border: none;
+    color: white;
+    border-radius: 2px;
+    margin-left: 5px;
+}
+#submitManualHeading:hover {
+    background-color: #45a049;
+}
+#manualHeadingInput {
+    width: 50px; /* Genişliği azaltıldı */
+    padding: 3px;
+    font-size: 12px;
+    text-align: right;
+    background-color: #ddd; /* Girdi alanının okunabilirliği için */
+    color: #333;
+    border: 1px solid #777;
+    border-radius: 2px;
+}
+
 </style>
 </head>
 <body>
 
 <div id="topLeftControls">
     <button id="fullscreenButton" class="control-button">Tam Ekran</button>
-    <button id="showLocalizer21L" class="loc-btn control-button">LOC 21L</button>
-    <button id="showLocalizer033Right" class="loc-btn control-button">LOC 033 Sağ</button>
+    <button id="showLocalizer21L" class="loc-btn control-button">LOC 03R</button>
+    <button id="showLocalizer033Right" class="loc-btn control-button">LOC 21L</button>
 	<button id="generateScenarioBtn">Senaryo Üret</button>
 </div>
 
@@ -492,6 +531,14 @@
     AIRMISS!<br>
     <span id="airmissCallsigns"></span>
 </div>
+<div id="runwaySelectionModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.75); z-index: 100; align-items: center; justify-content: center;">
+    <div style="background-color: #3a3a3a; padding: 25px 30px; border-radius: 8px; border: 2px solid #0f0; text-align: center; box-shadow: 0 8px 20px rgba(0,0,0,0.6);">
+        <h3 style="color: #0f0; margin-top: 0; margin-bottom: 25px; font-size: 18px; font-weight: bold;">Aktif Pisti Seçin</h3>
+        <button id="selectRunway03RBtn" class="control-button" style="margin: 5px 12px; padding: 12px 25px; background-color: #4CAF50; border-color: #3e8e41; font-size: 16px;">03R</button>
+        <button id="selectRunway21LBtn" class="control-button" style="margin: 5px 12px; padding: 12px 25px; background-color: #4CAF50; border-color: #3e8e41; font-size: 16px;">21L</button>
+        <button id="cancelRunwaySelectionBtn" class="control-button" style="margin: 15px 12px 5px; padding: 10px 22px; background-color: #f44336; border-color: #d32f2f; font-size: 14px;">İptal</button>
+    </div>
+</div>
 <script>
 // --- Canvas ve DOM Elementleri ---
 const canvas = document.getElementById('radar');
@@ -527,7 +574,10 @@ const takeoffButton = document.getElementById('takeoffButton');
 const takeoffOptionsContainer = document.getElementById('takeoffOptionsContainer');
 const tempMeasurementLabel = document.getElementById('tempMeasurementLabel');
 const runwayCenterHoverText = document.getElementById('runwayCenterHoverText');
-
+const runwaySelectionModal = document.getElementById('runwaySelectionModal');
+const selectRunway03RBtn = document.getElementById('selectRunway03RBtn');
+const selectRunway21LBtn = document.getElementById('selectRunway21LBtn');
+const cancelRunwaySelectionBtn = document.getElementById('cancelRunwaySelectionBtn');
 
 speedSlider.addEventListener('input', () => {
     const sliderValue = parseInt(speedSlider.value); // Integer from 0 to 9
@@ -548,6 +598,7 @@ speedSlider.addEventListener('input', () => {
 // const aircraftTypes = ['C130', 'A342', 'B737', 'B747', 'A321', 'A320', 'A319', 'MD83', 'PC12', 'F16']; // Örnek, sizde zaten olmalı
 const callsignPrefixes = ['THY', 'PGT', 'SXS', 'ONR', 'AFR', 'BAW', 'DLH', 'KLM', 'UAE', 'QTR', 'BER', 'AUA'];
 let scenarioAircraftIdCounter = 0;
+let activeScenarioTimeouts = []; // YENİ: Aktif senaryo zamanlayıcılarını tutacak dizi
 
 // --- Uçak Tipleri Veritabanı ---
 const aircraftTypes = ['C130', 'A342', 'B737', 'B747', 'A321', 'A320', 'A319', 'MD83', 'AN12', 'F16'];
@@ -1334,15 +1385,32 @@ function updateAirmissAlert(airmissPairs) {
     }
 }
 
-function generateScenario() {
-    // 1. Pist Seçimi Sorusu
-    const userChoice = prompt("Aktif pisti seçin (03R veya 21L):", "03R");
-    if (!userChoice || (userChoice.toUpperCase() !== "03R" && userChoice.toUpperCase() !== "21L")) {
-        alert("Geçersiz pist seçimi. Senaryo üretimi iptal edildi.");
-        return;
+// ESKİ generateScenario fonksiyonunu bulun ve aşağıdaki gibi güncelleyin.
+// function generateScenario() { ... } şeklindeki mevcut fonksiyonunuzu,
+// aşağıdaki iki yeni fonksiyonla değiştireceğiz.
+
+function showRunwaySelection() {
+    if (runwaySelectionModal) {
+        runwaySelectionModal.style.display = 'flex'; // Modal'ı görünür yap
     }
-    const activeRunway = userChoice.toUpperCase();
-    console.log(`Aktif pist seçildi: ${activeRunway}`);
+}
+
+function hideRunwaySelection() {
+    if (runwaySelectionModal) {
+        runwaySelectionModal.style.display = 'none'; // Modal'ı gizle
+    }
+}
+
+function initializeScenarioGeneration(activeRunway) {
+    hideRunwaySelection(); // Seçim yapıldıktan sonra modalı gizle
+
+    // 0. ÖNCEKİ ZAMANLAYICILARI TEMİZLE
+    if (activeScenarioTimeouts && activeScenarioTimeouts.length > 0) {
+        activeScenarioTimeouts.forEach(timeoutId => clearTimeout(timeoutId));
+    }
+    activeScenarioTimeouts = [];
+
+    // console.log(`Aktif pist seçildi: ${activeRunway}`);
 
     // Mevcut uçakları ve etiketlerini temizle
     aircrafts.forEach(ac => {
@@ -1350,139 +1418,173 @@ function generateScenario() {
     });
     aircrafts.length = 0;
     selectedAircraft = null;
-    updateTopCenterButtonStates();
+    updateTopCenterButtonStates(); // Buton durumlarını güncelle
+    if (popup) popup.style.display = 'none'; // Açık popup varsa kapat
     scenarioAircraftIdCounter = 0;
 
+    // Oyun duraklatılmışsa devam ettir
     if (isPaused) {
         isPaused = false;
         playPauseButton.textContent = 'Durdur';
         playPauseButton.classList.remove('paused');
-        toggleTimer(false);
-        lastTime = performance.now();
-        if (!animationFrameId) { gameLoop(lastTime); }
-        console.log("Oyun devam ettirildi.");
+        toggleTimer(false); // toggleTimer'a false parametresiyle çağırarak devam ettir
+        lastTime = performance.now(); // lastTime'ı güncelle
+        if (!animationFrameId) { // Eğer gameLoop durmuşsa yeniden başlat
+            gameLoop(lastTime);
+        }
     }
 
     const localizerCourse = activeRunway === '03R' ? INTERCEPT_TARGET_COURSE_033 : INTERCEPT_TARGET_COURSE_21L;
     let targetPointAngleDeg;
     if (activeRunway === '03R') {
         targetPointAngleDeg = (localizerCourse + 180) % 360;
-    } else {
+    } else { // 21L
         targetPointAngleDeg = (localizerCourse + 180) % 360;
     }
     const targetPointAngleRad = toRadians(targetPointAngleDeg);
-    const targetPointDistanceNM = 12;
+    const targetPointDistanceNM = 12; // Final Approach Fix (FAF) gibi bir nokta varsayalım
     const targetPointX = centerX + Math.sin(targetPointAngleRad) * nmToWorldPixels(targetPointDistanceNM);
     const targetPointY = centerY - Math.cos(targetPointAngleRad) * nmToWorldPixels(targetPointDistanceNM);
-    console.log(`Hedef iniş noktası (12NM): Açı ${targetPointAngleDeg.toFixed(0)}°, X=${targetPointX.toFixed(0)}, Y=${targetPointY.toFixed(0)} (Pist: ${activeRunway})`);
 
+    // --- İniş Trafiği (1. Dakika içinde 5 uçak) ---
     const numArrivals = 5;
-    const arrivalSpawnWindowSeconds = 60;
-    let availableWaypointsForScenario = [...waypoints].sort(() => 0.5 - Math.random());
+    const arrivalSpawnWindowSeconds = 60; // Uçakların 0-60 saniye içinde rastgele gelmesi
 
-    if (availableWaypointsForScenario.length < 4) { // 1 çift + 3 tekil = 4 farklı waypoint
-        console.error("İniş senaryosu için yeterli waypoint yok (en az 4 farklı waypoint tanımlı olmalı)!");
-        alert("Senaryo üretilemedi: Yeterli waypoint yok.");
-        return;
+    let availableWaypointsForScenario = [...waypoints].sort(() => 0.5 - Math.random());
+    const baseWaypoints = [...waypoints]; // Waypoint yetersizliği durumunda kullanılmak üzere orijinal liste
+
+    if (availableWaypointsForScenario.length < 4 && baseWaypoints.length > 0) {
+        console.warn("İniş senaryosu için yeterli sayıda farklı waypoint yok. Mevcut waypointler tekrar kullanılacak.");
+        // Yeterli waypoint yoksa, mevcutları tekrar kullanarak listeyi doldurmaya çalış
+        while(availableWaypointsForScenario.length < 4 && baseWaypoints.length > 0) {
+            availableWaypointsForScenario.push(baseWaypoints[Math.floor(Math.random() * baseWaypoints.length)]);
+        }
+    } else if (baseWaypoints.length === 0) {
+         console.error("Hiç waypoint tanımlı değil. İniş trafiği waypointler üzerinden üretilemiyor.");
+         // Bu durumda iniş trafiği üretimi atlanabilir veya farklı bir mantık izlenebilir.
     }
 
-    // İniş waypoint dağılımı: 1 waypoint 2 kez, 3 farklı waypoint 1'er kez.
-    const wp_double_use = availableWaypointsForScenario.pop();
-    const wp_single_use1 = availableWaypointsForScenario.pop();
-    const wp_single_use2 = availableWaypointsForScenario.pop();
-    const wp_single_use3 = availableWaypointsForScenario.pop();
+    let arrivalWaypointsSelection = [];
+    if (availableWaypointsForScenario.length >= 4) {
+        const wp_double_use = availableWaypointsForScenario.pop();
+        const wp_single_use1 = availableWaypointsForScenario.pop();
+        const wp_single_use2 = availableWaypointsForScenario.pop();
+        const wp_single_use3 = availableWaypointsForScenario.pop();
+        arrivalWaypointsSelection = [wp_double_use, wp_double_use, wp_single_use1, wp_single_use2, wp_single_use3];
+    } else if (availableWaypointsForScenario.length > 0) {
+        for(let k=0; k < numArrivals; k++) {
+            arrivalWaypointsSelection.push(availableWaypointsForScenario[k % availableWaypointsForScenario.length]);
+        }
+    }
+    // Waypoint yoksa arrivalWaypointsSelection boş kalacak ve aşağıdaki döngü çalışmayacak.
 
-    let arrivalWaypointsSelection = [wp_double_use, wp_double_use, wp_single_use1, wp_single_use2, wp_single_use3];
-    arrivalWaypointsSelection.sort(() => 0.5 - Math.random()); // Spawn sırasını karıştır
-
-    console.log("İniş için seçilen waypointler (spawn sırası karışık):", arrivalWaypointsSelection.map(wp => wp.name));
-    let firstFLForDoubleWaypoint = {};
+    arrivalWaypointsSelection.sort(() => 0.5 - Math.random()); // Son bir kez karıştır
+    let firstFLForWaypoint = {}; // Waypoint adına göre ilk atanan FL'i saklamak için
 
     for (let i = 0; i < numArrivals; i++) {
+        if (arrivalWaypointsSelection.length === 0) break; 
+
         const spawnTimeSeconds = Math.random() * arrivalSpawnWindowSeconds;
-        const waypoint = arrivalWaypointsSelection[i];
+        const waypoint = arrivalWaypointsSelection[i % arrivalWaypointsSelection.length]; 
         const wpAngleRad = toRadians(waypoint.angle);
         const spawnX = centerX + Math.sin(wpAngleRad) * nmToWorldPixels(waypoint.distanceNM);
         const spawnY = centerY - Math.cos(wpAngleRad) * nmToWorldPixels(waypoint.distanceNM);
         const bearingToTargetPoint = calculateBearing(spawnX, spawnY, targetPointX, targetPointY);
 
-        let baseFL = Math.floor(Math.random() * (22 - 13 + 1)) + 13;
+        let baseFL = Math.floor(Math.random() * (22 - 13 + 1)) + 13; // FL130-FL220
         let altitudeFL = baseFL * 10;
 
-        if (waypoint.name === wp_double_use.name) { // Sadece çift kullanılacak waypoint için FL kontrolü
-            if (firstFLForDoubleWaypoint[waypoint.name] === undefined) {
-                firstFLForDoubleWaypoint[waypoint.name] = altitudeFL;
-            } else {
-                while (altitudeFL === firstFLForDoubleWaypoint[waypoint.name]) {
-                    let newBaseFL = Math.floor(Math.random() * (22 - 13 + 1)) + 13;
-                    altitudeFL = newBaseFL * 10;
-                }
-                console.log(`Aynı WP (${waypoint.name}) için ikinci uçağın FL'i ${altitudeFL} olarak ayarlandı (önceki: ${firstFLForDoubleWaypoint[waypoint.name]})`);
+        const waypointKey = waypoint.name;
+        if (firstFLForWaypoint[waypointKey] === undefined) {
+            firstFLForWaypoint[waypointKey] = altitudeFL;
+        } else {
+            // Aynı waypoint'ten gelen ikinci (veya daha fazla) uçak için farklı FL ata
+            let attempts = 0;
+            const originalFL = firstFLForWaypoint[waypointKey];
+            while (altitudeFL === originalFL && attempts < 20) { // Çok fazla denemeden sonra çakışma kabul edilebilir
+                baseFL = Math.floor(Math.random() * (22 - 13 + 1)) + 13;
+                altitudeFL = baseFL * 10;
+                attempts++;
             }
+            if (altitudeFL === originalFL) {
+                console.warn(`Waypoint ${waypointKey} için ${originalFL} dışında farklı bir FL atanamadı. ${altitudeFL} kullanılıyor.`);
+            }
+            // Bu mantık, aynı anda gelen çok sayıda uçak için ideal olmayabilir,
+            // ama basit bir senaryo için genellikle yeterlidir.
+            // Daha gelişmiş bir sistem, o an o waypoint'e atanan tüm FL'leri takip etmelidir.
         }
+
         const altitudeFeet = altitudeFL * 100;
         const acType = aircraftTypes[Math.floor(Math.random() * aircraftTypes.length)];
         scenarioAircraftIdCounter++;
         const callsign = (callsignPrefixes[Math.floor(Math.random() * callsignPrefixes.length)]) + (100 + scenarioAircraftIdCounter);
 
-        setTimeout(() => {
+        const timeoutIdArrival = setTimeout(() => {
             const aircraft = {
                 id: callsign, x: spawnX, y: spawnY,
                 heading: Math.round(bearingToTargetPoint), targetHeading: Math.round(bearingToTargetPoint),
                 speedKTS: defaultAircraftSpeeds[acType] || 230,
-                altitude: altitudeFeet, targetAltitude: altitudeFeet,
+                altitude: altitudeFeet, targetAltitude: altitudeFeet, // Başlangıçta mevcut irtifada
                 rateOfDescent: 0, rateOfClimb: 0, isTakingOff: false, takeoffRunway: null,
                 isIntercepting: false, isHandedOffToTower: false, showVector: false,
                 labelElement: null, labelX: 0, labelY: 0, labelDragged: true, bankAngle: 0, maxBankAngle: 25,
                 commandedTurnDirection: 0, turning: false, type: acType, departureTargetFL: null,
                 showInfoPanel: false, draggedLabelDeltaX: 0, draggedLabelDeltaY: 0, initialPosSet: true,
-                targetWaypoint: null
+                targetWaypoint: null // Gelen uçaklar direkt FAF benzeri bir noktaya yöneliyor, STAR waypoint'i yok
             };
             aircrafts.push(aircraft);
-            // console.log(`İniş Uçağı: ${aircraft.id} (${aircraft.type}) FL${altitudeFL}, ${waypoint.name}'den. Zaman: ${spawnTimeSeconds.toFixed(0)}s`);
-        }, spawnTimeSeconds * 1000 / gameSpeedMultiplier);
+        }, spawnTimeSeconds * 1000 / gameSpeedMultiplier); // Oyun hızına göre zamanlama
+        activeScenarioTimeouts.push(timeoutIdArrival);
     }
 
-    // --- Kalkış Trafiği (2. ve 3. Dakikada 1'er adet) ---
+    // --- Kalkış Trafiği ---
     const departureSpawnTimes = [
-        (1 * 60) + (Math.random() * 30),
-        (2 * 60) + (Math.random() * 30)
+        Math.random() * 60,          // İlk uçak: 0-60 saniye arası
+        120 + (Math.random() * 60)   // İkinci uçak: 120-180 saniye arası (3. dakika içinde)
     ];
     let waypointsForDeparture = [...waypoints].sort(() => 0.5 - Math.random());
-    if (waypointsForDeparture.length === 0) {
-         console.error("Kalkış senaryosu için waypoint bulunamadı!");
-         waypointsForDeparture.push({name: "RANDOM_HDG_DEP", angle: localizerCourse, distanceNM: 30});
+    if (waypointsForDeparture.length === 0 && baseWaypoints.length > 0) {
+         waypointsForDeparture.push(baseWaypoints[Math.floor(Math.random() * baseWaypoints.length)]);
     }
 
     for (let i = 0; i < departureSpawnTimes.length; i++) {
         const takeoffTimeSeconds = departureSpawnTimes[i];
         const acType = aircraftTypes[Math.floor(Math.random() * aircraftTypes.length)];
         scenarioAircraftIdCounter++;
-        const callsign = (callsignPrefixes[Math.floor(Math.random() * callsignPrefixes.length)]) + (500 + scenarioAircraftIdCounter);
-        const departureTargetBaseFL = Math.floor(Math.random() * (28 - 18 + 1)) + 18;
+        const callsign = (callsignPrefixes[Math.floor(Math.random() * callsignPrefixes.length)]) + (500 + scenarioAircraftIdCounter); // Farklı bir numara serisi
+        const departureTargetBaseFL = Math.floor(Math.random() * (28 - 18 + 1)) + 18; // FL180-FL280
         const departureTargetFL = departureTargetBaseFL * 10;
         const climbRate = aircraftPerformanceROC[acType] || DEFAULT_CLIMB_RATE;
-        const takeoffTargetWaypoint = waypointsForDeparture[i % waypointsForDeparture.length];
 
-        setTimeout(() => {
+        let takeoffTargetWaypointName = null;
+        if (waypointsForDeparture.length > 0) {
+            takeoffTargetWaypointName = waypointsForDeparture[i % waypointsForDeparture.length].name;
+        } else {
+            console.warn(`Kalkış yapan ${callsign} için hedef waypoint bulunamadı. Pist başında devam edecek.`);
+        }
+
+        const timeoutIdDeparture = setTimeout(() => {
             const aircraft = {
-                id: callsign, x: centerX, y: centerY,
-                heading: localizerCourse, targetHeading: localizerCourse,
-                speedKTS: 180,
+                id: callsign, x: centerX, y: centerY, // Pist başından kalkış
+                heading: localizerCourse, targetHeading: localizerCourse, // Pist başıyla başla
+                speedKTS: 160, // Kalkış sonrası başlangıç hızı
                 altitude: 0, targetAltitude: departureTargetFL * 100,
                 rateOfClimb: climbRate, rateOfDescent: 0, isTakingOff: true, takeoffRunway: activeRunway,
                 isIntercepting: false, isHandedOffToTower: false, showVector: false,
                 labelElement: null, labelX: 0, labelY: 0, labelDragged: true, bankAngle: 0, maxBankAngle: 25,
                 commandedTurnDirection: 0, turning: false, type: acType, departureTargetFL: departureTargetFL,
                 showInfoPanel: false, draggedLabelDeltaX: 0, draggedLabelDeltaY: 0, initialPosSet: true,
-                targetWaypoint: takeoffTargetWaypoint.name // Kalkış uçağının gideceği waypoint
+                targetWaypoint: takeoffTargetWaypointName
             };
             aircrafts.push(aircraft);
-            // console.log(`Kalkış Uçağı: ${aircraft.id} (${aircraft.type}) Pist: ${activeRunway}, Hedef FL${departureTargetFL} --> ${takeoffTargetWaypoint.name}. Zaman: ${takeoffTimeSeconds.toFixed(0)}s`);
-        }, takeoffTimeSeconds * 1000 / gameSpeedMultiplier);
+        }, takeoffTimeSeconds * 1000 / gameSpeedMultiplier); // Oyun hızına göre zamanlama
+        activeScenarioTimeouts.push(timeoutIdDeparture);
     }
-    console.log(`Senaryo üretimi tamamlandı: Pist ${activeRunway}. Toplam ${numArrivals} iniş ve ${departureSpawnTimes.length} kalkış trafiği zamanla eklenecek.`);
+    // console.log(`Senaryo üretimi tamamlandı: Pist ${activeRunway}. Zamanlayıcılar kuruldu.`);
 }
+
+
+
 
 // --- Ölçüm Verilerini Güncelle ---
 function updateMeasurementData() {
@@ -1603,7 +1705,7 @@ function updateAircraftLabelPositionDOM(ac) {
         ac.labelElement.className = 'dynamic-label aircraft-label';
         ac.labelElement.dataset.aircraftId = ac.id;
         document.body.appendChild(ac.labelElement);
-        // YENİ HTML YAPISI (info-dep-waypoint span'ı eklendi)
+        // HTML yapısı - hız satırındaki yorum tamamen kaldırıldı
         ac.labelElement.innerHTML = `
             <div class="label-line label-id">${ac.id}</div>
             <div class="aircraft-info-panel" style="display: none;">
@@ -1611,7 +1713,7 @@ function updateAircraftLabelPositionDOM(ac) {
                 <div class="info-target-fl-line" style="display: none;">Hedef FL: <span class="info-target-fl"></span></div>
             </div>
             <div class="label-line clickable-line" data-field="heading">${Math.round(ac.heading)}°</div>
-            <div class="label-line clickable-line" data-field="speedKTS">${ac.speedKTS}kts</div>
+            <div class="label-line clickable-line" data-field="speedKTS">${Math.round(ac.speedKTS)}kts</div>
             <div class="label-line altitude-line">
                 <span class="current-altitude">${currentFL}</span>
                 <span class="target-altitude clickable-line" data-field="altitude">⇢${targetFL}</span>
@@ -1645,30 +1747,27 @@ function updateAircraftLabelPositionDOM(ac) {
     // Etiket içeriğini güncelleme kısmı
     ac.labelElement.querySelector('.label-id').textContent = ac.id;
     ac.labelElement.querySelector('[data-field="heading"]').textContent = `${Math.round(ac.heading)}°`;
-    ac.labelElement.querySelector('[data-field="speedKTS"]').textContent = `${ac.speedKTS}kts`;
+    ac.labelElement.querySelector('[data-field="speedKTS"]').textContent = `${Math.round(ac.speedKTS)}kts`; // Hız burada da yuvarlanıyor
     ac.labelElement.querySelector('.current-altitude').textContent = currentFL;
     ac.labelElement.querySelector('.target-altitude').textContent = `⇢${targetFL}`;
     ac.labelElement.querySelector('[data-field="rateOfDescent"]').textContent = ` RoD ${ac.rateOfDescent > 0 ? ac.rateOfDescent : (ac.rateOfClimb > 0 ? `+${ac.rateOfClimb}` : '0')}`;
 
     const infoPanel = ac.labelElement.querySelector('.aircraft-info-panel');
     const infoTypeSpan = infoPanel.querySelector('.info-type');
-    const infoDepWaypointSpan = infoPanel.querySelector('.info-dep-waypoint'); // Yeni span'ı seç
+    const infoDepWaypointSpan = infoPanel.querySelector('.info-dep-waypoint');
     const infoTargetFLLine = infoPanel.querySelector('.info-target-fl-line');
     const infoTargetFLSpan = infoPanel.querySelector('.info-target-fl');
 
     if (ac.showInfoPanel) {
         infoPanel.style.display = 'block';
         infoTypeSpan.textContent = ac.type || 'N/A';
-
-        // Kalkış yapan ve hedef waypoint'i olan uçaklar için waypoint'i göster
         if (ac.departureTargetFL && ac.targetWaypoint) {
             infoDepWaypointSpan.textContent = ac.targetWaypoint;
-            infoDepWaypointSpan.style.display = 'inline'; // Görünür yap
+            infoDepWaypointSpan.style.display = 'inline';
         } else {
             infoDepWaypointSpan.textContent = '';
-            infoDepWaypointSpan.style.display = 'none'; // Gizle
+            infoDepWaypointSpan.style.display = 'none';
         }
-
         if (ac.departureTargetFL) {
             infoTargetFLLine.style.display = 'block';
             infoTargetFLSpan.textContent = `FL${ac.departureTargetFL}`;
@@ -1679,7 +1778,7 @@ function updateAircraftLabelPositionDOM(ac) {
         infoPanel.style.display = 'none';
     }
 
-    // Etiket pozisyonunu ve stilini güncelleme (bu kısım sizde zaten var)
+    // Etiket pozisyonunu ve stilini güncelleme
     if (!(isDraggingLabel && draggedLabelItem === ac)) {
         const screenPos = worldToScreen(ac.x, ac.y);
         if (ac.labelDragged) {
@@ -1788,82 +1887,204 @@ function updateMeasurementLabelPositionDOM(measurement) {
 // --- Popup Menü ---
 
 function showPopupForField(x, y, field) {
-    if (!selectedAircraft) return; popup.innerHTML = ''; let values = []; let current; let tempCommandedTurnDirection = 0;
+    if (!selectedAircraft) return;
+    popup.innerHTML = ''; // Popup'ı her yeni açılışta temizle
+
+    let values = [];
+    let current;
+    // Geçici dönüş yönü komutunu, popup açılırken uçağın mevcut aktif dönüş komutundan al.
+    // Eğer uçak zaten bir L/R komutuyla ve aktif olarak dönüyorsa ('turning' true ise), o komutu yansıt.
+    // Aksi halde 0 (komut yok veya dönüş aktif değil) olarak başlat.
+    let tempCommandedTurnDirection = (selectedAircraft.turning && selectedAircraft.commandedTurnDirection !== 0) ? selectedAircraft.commandedTurnDirection : 0;
+
     if (field === 'heading') {
-        current = selectedAircraft.targetHeading; values = Array.from({length: 72}, (_, i) => i * 5);
-        popup.innerHTML = `<div id="headingValues" style="max-height: 150px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #0f0 #555;"></div><div id="turnButtons"><div class="turn-btn control-button" data-direction="-1">LEFT</div><div class="turn-btn control-button" data-direction="1">RIGHT</div></div>`;
+        current = selectedAircraft.targetHeading; // Uçağın mevcut hedef başı
+
+        // Popup HTML'ini oluştur (manuel giriş ve sıralı heading listesi için yerleşim)
+        popup.innerHTML = `
+            <div id="headingValues" style="max-height: 140px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #0f0 #555; margin-bottom: 5px;">
+                </div>
+            <div id="turnButtons" style="margin-bottom: 5px;">
+                <div class="turn-btn control-button" data-direction="-1">LEFT</div>
+                <div class="turn-btn control-button" data-direction="1">RIGHT</div>
+            </div>
+            <div id="manualHeadingEntry" style="display: flex; align-items: center; border-top: 1px solid #777; padding-top: 5px;">
+                <input type="number" id="manualHeadingInput" min="0" max="359" step="1" style="width: 50px; text-align: right; margin-right: 5px; padding: 3px; font-size:12px; background-color: #eee; color: #333; border: 1px solid #777; border-radius:2px;" placeholder="HDG">
+                <button id="submitManualHeading" class="control-button" style="padding: 3px 8px; font-size: 11px; min-width: unset; margin-bottom:0px; background-color: #4CAF50; border-color: #4CAF50;">Set</button>
+            </div>`;
+
         const headingValuesContainer = document.getElementById('headingValues');
-        values.forEach(val => {
-            const div = document.createElement('div'); div.textContent = `${val.toString().padStart(3, '0')}°`;
-            div.onclick = () => {
-                if (selectedAircraft.isIntercepting) { selectedAircraft.isIntercepting = false; }
-                selectedAircraft.targetHeading = val; selectedAircraft.turning = true;
-                selectedAircraft.commandedTurnDirection = tempCommandedTurnDirection; popup.style.display = 'none';
-                document.querySelectorAll('.turn-btn').forEach(b => b.classList.toggle('active', parseInt(b.dataset.direction) === tempCommandedTurnDirection));
-            }; headingValuesContainer.appendChild(div);
-        });
-        document.querySelectorAll('.turn-btn').forEach(btn => {
-            if (parseInt(btn.dataset.direction) === selectedAircraft.commandedTurnDirection) { btn.classList.add('active'); tempCommandedTurnDirection = selectedAircraft.commandedTurnDirection; }
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation(); const clickedDir = parseInt(e.target.dataset.direction);
-                if (selectedAircraft.isIntercepting) { selectedAircraft.isIntercepting = false; }
-                if (tempCommandedTurnDirection === clickedDir) {
-                    tempCommandedTurnDirection = 0; e.target.classList.remove('active');
-                    selectedAircraft.commandedTurnDirection = 0; selectedAircraft.turning = false;
+        const turnButtonsContainer = document.getElementById('turnButtons');
+        const manualHeadingInput = document.getElementById('manualHeadingInput');
+        const submitManualHeadingBtn = document.getElementById('submitManualHeading');
+
+        // Ortak heading ayarlama fonksiyonu (hem listeden seçim hem de manuel giriş için)
+        const applyHeadingChange = (newHeadingStr) => {
+            const newHeading = parseInt(newHeadingStr, 10);
+            if (isNaN(newHeading) || newHeading < 0 || newHeading > 359) { // 360 da 0 olarak kabul edilebilir
+                if (parseInt(newHeadingStr, 10) === 360) { // Kullanıcı 360 girdiyse 0 kabul et
+                     selectedAircraft.targetHeading = 0;
                 } else {
-                    tempCommandedTurnDirection = clickedDir; document.querySelectorAll('.turn-btn').forEach(b => b.classList.remove('active')); e.target.classList.add('active');
-                    selectedAircraft.commandedTurnDirection = clickedDir; selectedAircraft.turning = true;
+                    console.error("Geçersiz heading değeri:", newHeadingStr);
+                    if(manualHeadingInput) manualHeadingInput.style.borderColor = 'red';
+                    setTimeout(() => { if(manualHeadingInput) manualHeadingInput.style.borderColor = '#777'; }, 1500);
+                    return;
+                }
+            } else {
+                 selectedAircraft.targetHeading = newHeading;
+            }
+
+            if (selectedAircraft.isIntercepting) { // Eğer uçak localizer intercept ediyorsa, bu komut intercept'i iptal eder.
+                selectedAircraft.isIntercepting = false;
+                console.log(`${selectedAircraft.id} için intercept iptal edildi, yeni baş ayarlandı.`);
+            }
+            selectedAircraft.turning = true;      // Uçağın dönmeye başlamasını sağla
+            selectedAircraft.commandedTurnDirection = tempCommandedTurnDirection; // Popup'ta seçilen L/R yönünü uygula
+
+            popup.style.display = 'none'; // Popup'ı kapat
+            updateTopCenterButtonStates(); // Intercept durumu değişmiş olabilir, butonları güncelle
+        };
+
+        // Manuel giriş için olay dinleyicileri
+        submitManualHeadingBtn.addEventListener('click', () => {
+            applyHeadingChange(manualHeadingInput.value);
+        });
+        manualHeadingInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                submitManualHeadingBtn.click(); // "Set" butonunun click olayını tetikle
+            }
+        });
+
+        // "LEFT" ve "RIGHT" butonlarının başlangıçtaki aktif durumunu ayarla
+        turnButtonsContainer.querySelectorAll('.turn-btn').forEach(btn => {
+            if (parseInt(btn.dataset.direction) === tempCommandedTurnDirection) { // tempCommandedTurnDirection 0 değilse aktif olur
+                btn.classList.add('active');
+            }
+        });
+
+        // "LEFT" ve "RIGHT" butonları için olay dinleyicileri (sadece tempCommandedTurnDirection'ı günceller)
+        turnButtonsContainer.querySelectorAll('.turn-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const clickedDir = parseInt(e.target.dataset.direction);
+                if (tempCommandedTurnDirection === clickedDir) {
+                    tempCommandedTurnDirection = 0;
+                    e.target.classList.remove('active');
+                } else {
+                    tempCommandedTurnDirection = clickedDir;
+                    turnButtonsContainer.querySelectorAll('.turn-btn').forEach(b => b.classList.remove('active'));
+                    e.target.classList.add('active');
                 }
             });
         });
+
+        // Heading değerleri listesini oluştur (360 en üstte, sonra 355, ..., 0)
+        // "360°" (aslında 0 derece) seçeneğini en üste ekle
+        const div360 = document.createElement('div');
+        div360.textContent = `360°`;
+        div360.onclick = () => applyHeadingChange(0); // 360 derece 0 derece demektir
+        headingValuesContainer.appendChild(div360);
+
+        // Sonra 355'ten 0'a kadar olanları (5'er derece arayla) ekle
+        for (let i = 355; i >= 0; i -= 5) {
+            const val = i;
+            const div = document.createElement('div');
+            div.textContent = `${val.toString().padStart(3, '0')}°`;
+            // Hover efekti için CSS class'ı eklenebilir veya direkt CSS ile hedeflenebilir
+            // div.classList.add('heading-option-item');
+            div.onclick = () => applyHeadingChange(val);
+            headingValuesContainer.appendChild(div);
+        }
+
     } else if (field === 'speedKTS') {
-        current = selectedAircraft.speedKTS; values = Array.from({length: (600 - 100) / 10 + 1}, (_, i) => 100 + i * 10);
-        values.forEach(val => { const div = document.createElement('div'); div.textContent = `${val} kts`; if (val === current) div.classList.add('current-value'); div.onclick = () => { selectedAircraft[field] = val; popup.style.display = 'none'; }; popup.appendChild(div); });
-    } else if (field === 'altitude') {
-        current = selectedAircraft.targetAltitude; values = Array.from({length: (450 - 10) / 5 + 1}, (_, i) => (10 + i * 5) * 100);
+        current = selectedAircraft.speedKTS;
+        values = Array.from({ length: (600 - 100) / 10 + 1 }, (_, i) => 100 + i * 10);
         values.forEach(val => {
-            const div = document.createElement('div'); div.textContent = formatFlightLevel(val); if (val === current) div.classList.add('current-value');
+            const div = document.createElement('div');
+            div.textContent = `${val} kts`;
+            if (val === current) div.classList.add('current-value');
+            div.onclick = () => { selectedAircraft.speedKTS = val; popup.style.display = 'none'; };
+            popup.appendChild(div);
+        });
+    } else if (field === 'altitude') {
+        current = selectedAircraft.targetAltitude;
+        values = Array.from({ length: (450 - 10) / 5 + 1 }, (_, i) => (10 + i * 5) * 100); // FL010 to FL450 in FL5 steps
+        values.forEach(val => {
+            const div = document.createElement('div');
+            div.textContent = formatFlightLevel(val);
+            if (val === current) div.classList.add('current-value');
             div.onclick = () => {
                 selectedAircraft.targetAltitude = val;
                 if (selectedAircraft.altitude < val && selectedAircraft.rateOfClimb === 0) {
-                     selectedAircraft.rateOfClimb = DEFAULT_CLIMB_RATE;
-                     selectedAircraft.rateOfDescent = 0;
+                    selectedAircraft.rateOfClimb = aircraftPerformanceROC[selectedAircraft.type] || DEFAULT_CLIMB_RATE;
+                    selectedAircraft.rateOfDescent = 0;
                 } else if (selectedAircraft.altitude > val && selectedAircraft.rateOfDescent === 0) {
-                     selectedAircraft.rateOfDescent = DEFAULT_ROD;
-                     selectedAircraft.rateOfClimb = 0;
+                    selectedAircraft.rateOfDescent = DEFAULT_ROD;
+                    selectedAircraft.rateOfClimb = 0;
                 }
                 popup.style.display = 'none';
-            }; popup.appendChild(div);
+            };
+            popup.appendChild(div);
         });
     } else if (field === 'rateOfDescent') {
         current = selectedAircraft.rateOfDescent > 0 ? selectedAircraft.rateOfDescent : (selectedAircraft.rateOfClimb > 0 ? -selectedAircraft.rateOfClimb : 0);
         values = [3000, 2500, 2000, 1500, 1000, 500, 0, -500, -1000, -1500, -2000, -2500, -3000];
         values.forEach(val => {
-             const div = document.createElement('div');
-             div.textContent = `${val > 0 ? val : (val < 0 ? '+' + Math.abs(val) : '0')} ft/min`;
-             if (val === current) div.classList.add('current-value');
-             div.onclick = () => {
-                 if (val > 0) {
-                     selectedAircraft.rateOfDescent = val;
-                     selectedAircraft.rateOfClimb = 0;
-                 } else if (val < 0) {
-                     selectedAircraft.rateOfClimb = Math.abs(val);
-                     selectedAircraft.rateOfDescent = 0;
-                 } else {
-                     selectedAircraft.rateOfDescent = 0;
-                     selectedAircraft.rateOfClimb = 0;
-                 }
-                 popup.style.display = 'none';
-             };
-             popup.appendChild(div);
+            const div = document.createElement('div');
+            div.textContent = `${val > 0 ? val : (val < 0 ? '+' + Math.abs(val) : '0')} ft/min`;
+            if (val === current) div.classList.add('current-value');
+            div.onclick = () => {
+                if (val > 0) { selectedAircraft.rateOfDescent = val; selectedAircraft.rateOfClimb = 0; }
+                else if (val < 0) { selectedAircraft.rateOfClimb = Math.abs(val); selectedAircraft.rateOfDescent = 0; }
+                else { selectedAircraft.rateOfDescent = 0; selectedAircraft.rateOfClimb = 0; }
+                popup.style.display = 'none';
+            };
+            popup.appendChild(div);
         });
     }
-    const popupWidth = 150; const popupHeight = popup.offsetHeight > 200 ? 200 : popup.offsetHeight + 20; let finalX = x; let finalY = y;
-    if (x + popupWidth > window.innerWidth) { finalX = window.innerWidth - popupWidth - 10; } if (y + popupHeight > window.innerHeight) { finalY = window.innerHeight - popupHeight - 10; } if (finalX < 0) finalX = 10; if (finalY < 0) finalY = 10;
-    popup.style.left = `${finalX}px`; popup.style.top = `${finalY}px`; popup.style.display = 'block';
+
+    // Popup pozisyonlandırma mantığı
+    popup.style.width = '160px'; // Genişlik manuel giriş için biraz artırıldı
+    popup.style.maxHeight = '260px'; // Maksimum yükseklik biraz artırıldı
+
+    // Boyutları doğru okuyabilmek için popup'ı DOM'da yer kaplar hale getir ama görünmez yap
+    popup.style.visibility = 'hidden';
+    popup.style.display = 'block';
+
+    const actualPopupWidth = popup.offsetWidth;
+    const actualPopupHeight = popup.offsetHeight;
+
+    // Başlangıç pozisyonunu fare tıklamasının biraz sağ altı olarak ayarla
+    let finalX = x + 10;
+    let finalY = y + 10;
+    const screenMargin = 15; // Ekran kenarlarına bırakılacak minimum boşluk
+
+    // Sağ kenardan taşma kontrolü
+    if (finalX + actualPopupWidth > window.innerWidth - screenMargin) {
+        finalX = x - actualPopupWidth - 10; // Taşarsa, tıklamanın soluna al
+    }
+    // Sol kenardan taşma kontrolü (sola aldıktan sonra veya baştan)
+    if (finalX < screenMargin) {
+        finalX = screenMargin;
+    }
+
+    // Alt kenardan taşma kontrolü
+    if (finalY + actualPopupHeight > window.innerHeight - screenMargin) {
+        finalY = y - actualPopupHeight - 10; // Taşarsa, tıklamanın üstüne al
+    }
+    // Üst kenardan taşma kontrolü (üste aldıktan sonra veya baştan)
+    if (finalY < screenMargin) {
+        finalY = screenMargin;
+    }
+
+    // Hesaplanmış son pozisyonu uygula ve popup'ı görünür yap
+    popup.style.left = `${finalX}px`;
+    popup.style.top = `${finalY}px`;
+    popup.style.visibility = 'visible';
+    // popup.style.display = 'block'; // Zaten yukarıda 'block' yapılmıştı.
 }
 
-// --- Olay Dinleyiciler ---
+// --- Olay Dinleyiciler ---  EventListeners
 canvas.addEventListener('mousedown', function(event) {
     if (event.button === 1 || (event.button === 0 && event.ctrlKey)) {
         if (!isDraggingLabel) {
@@ -1877,6 +2098,45 @@ canvas.addEventListener('mousedown', function(event) {
         }
     }
 });
+
+canvas.addEventListener('contextmenu', function(event) {
+    // Eğer ölçüm modundaysak ve ilk nokta seçilmişse (ikinci nokta bekleniyorsa)
+    if (isMeasuring && measurementStartPoint) {
+        event.preventDefault(); // Tarayıcının varsayılan sağ tık menüsünü engelle
+
+        // console.log("Ölçüm işlemi sağ tık ile iptal edildi."); // Test için log
+
+        isMeasuring = false;
+        measurementStartPoint = null;
+        hoveredAircraftForMeasure = null; // Olası hover durumlarını temizle
+        hoveredRunwayCenterForMeasure = false; // Olası hover durumlarını temizle
+
+        if (measureButton) {
+            measureButton.classList.remove('measuring');
+            measureButton.textContent = 'Ölçüm Yap';
+        }
+
+        // Canvas cursor'unu, diğer aktif modlara (örn: uçak yerleştirme) veya varsayılana göre ayarla
+        if (isPlacingAircraft) {
+            canvas.style.cursor = 'crosshair';
+        } else {
+            canvas.style.cursor = 'grab'; // Veya 'default' veya pan için 'grab'
+        }
+
+        if (tempMeasurementLabel) {
+            tempMeasurementLabel.style.display = 'none'; // Geçici ölçüm etiketini gizle
+        }
+        
+        // Ölçüm iptal edildiğinde, seçili uçağın seçimini kaldırmaya gerek yok,
+        // sadece ölçüm işlemi sonlandırılıyor.
+        // updateTopCenterButtonStates(); // Eğer buton durumları değişiyorsa çağrılabilir.
+        // drawRadar(); // Genellikle mousemove bunu tetikleyeceği için gerekmeyebilir.
+    }
+    // Eğer ölçüm modunda değilsek veya ilk nokta henüz seçilmemişse,
+    // bu listener bir şey yapmaz ve normal sağ tık davranışı (eğer varsa) devam eder.
+    // VEYA, eğer kalıcı bir ölçüm etiketinin kendi sağ tık menüsü varsa, o çalışır.
+});
+
 
 
 function handleGlobalMouseMove(event) {
@@ -2457,7 +2717,29 @@ function initializeApp() {
     gameLoop(lastTime);
 }
 
-document.getElementById('generateScenarioBtn').addEventListener('click', generateScenario);
+const generateScenarioBtn = document.getElementById('generateScenarioBtn');
+if (generateScenarioBtn) {
+    generateScenarioBtn.addEventListener('click', showRunwaySelection);
+}
+
+if (selectRunway03RBtn) {
+    selectRunway03RBtn.addEventListener('click', () => {
+        initializeScenarioGeneration('03R');
+    });
+}
+
+if (selectRunway21LBtn) {
+    selectRunway21LBtn.addEventListener('click', () => {
+        initializeScenarioGeneration('21L');
+    });
+}
+
+if (cancelRunwaySelectionBtn) {
+    cancelRunwaySelectionBtn.addEventListener('click', () => {
+        hideRunwaySelection();
+        console.log("Pist seçimi kullanıcı tarafından iptal edildi.");
+    });
+}
 initializeApp();
 </script>
 </body>
