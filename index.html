@@ -4,7 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Radar Yaklaşma Oyunu</title>
+
+
+
+
+
+
+
+
 <style>
+   
     /* Temel stiller */
     html, body { height: 100%; margin: 0; overflow: hidden; /* Kaydırma çubuklarını engelle */ background-color: #333; color: white; font-family: Arial, sans-serif; display: flex; /* Flexbox ile canvas'ı ortala */ align-items: center; /* Dikey ortala */ justify-content: center; /* Yatay ortala */ }
     canvas { display: block; /* margin: auto kaldırıldı */ background: rgba(160, 160, 160, 0.5); cursor: grab; /* max-width/height kaldırıldı, JS ile ayarlanacak */ border: none; /* Kenarlık olmadığından emin ol */ }
@@ -47,36 +56,32 @@
     #towerButton.handed-off { background-color: #0d6efd; border-color: #0d6efd; } /* Kuleye devredilince farklı renk */
     #removeButton { background-color: #dc3545; border-color: #dc3545; }
 
-
     /* Sağ Üst Kontroller (Vector) */
     #vectorControls {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    display: flex;
-    flex-direction: column; /* Dakika butonları dikey sıralanacak */
-    gap: 5px; /* Elemanlar arasında dikey boşluk */
-    z-index: 10;
-}
-
-#vectorToggleWrapper {
-    display: flex;
-    flex-direction: row; /* Timer ve vectorToggle yan yana */
-    align-items: center;
-    gap: 10px; /* Timer ile buton arasında boşluk */
-}
-
-#gameTimer {
-    color: white;
-    font-weight: bold;
-    font-size: 14px;
-    font-family: Arial, sans-serif;
-    background: rgba(50, 50, 50, 0.2);
-    padding: 5px 10px;
-    border: 1px solid #0f0;
-    border-radius: 3px;
-}
-	
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        display: flex;
+        flex-direction: column; /* Dakika butonları dikey sıralanacak */
+        gap: 5px; /* Elemanlar arasında dikey boşluk */
+        z-index: 10;
+    }
+    #vectorToggleWrapper {
+        display: flex;
+        flex-direction: row; /* Timer ve vectorToggle yan yana */
+        align-items: center;
+        gap: 10px; /* Timer ile buton arasında boşluk */
+    }
+    #gameTimer {
+        color: white;
+        font-weight: bold;
+        font-size: 14px;
+        font-family: Arial, sans-serif;
+        background: rgba(50, 50, 50, 0.2);
+        padding: 5px 10px;
+        border: 1px solid #0f0;
+        border-radius: 3px;
+    }
     #vectorToggle { background: #a00; color: white; }
     #vectorToggle.active { background: #0f0; color: black; }
 
@@ -112,7 +117,6 @@
         border: 1px solid #6f42c1;
         border-radius: 5px;
         margin-bottom: 5px;
-        /* display: none; */ /* Başlangıçta gizli - JS ile kontrol ediliyor*/
         width: 130px; /* Butonlarla aynı genişlik */
         box-sizing: border-box;
         display: flex;
@@ -134,7 +138,7 @@
     .takeoff-option-btn:hover {
         background-color: #8a63d2;
     }
-.takeoff-runway-option {
+    .takeoff-runway-option {
         display: flex;
         flex-direction: column;
         margin-bottom: 5px;
@@ -174,41 +178,103 @@
     .turn-btn:hover { background: #0f0; color: black; }
     .turn-btn.active { background: #0f0; color: black; border: 1px solid black; }
 
-    /* Etiketler (Uçak ve Ölçüm) */
+    /* --- YENİ VE GÜNCELLENMİŞ ETİKET STİLLERİ --- */
     .dynamic-label { /* Ortak stil */
         position: absolute;
         font-family: monospace;
         pointer-events: auto; /* Olayları yakalaması için */
         white-space: nowrap;
         z-index: 5;
-        color: white !important; /* Metin rengi beyaz */
-        background: rgba(50, 50, 50, 0.0); /* Saydamlık */
+        color: black !important; /* YENİ: Metin rengi siyah */
+        font-weight: bold !important; /* YENİ: Metin kalın */
+        background: transparent !important; /* YENİ: Tamamen transparan */
         padding: 3px 6px;
-        border: 1px solid #fff;
+        border: none; /* YENİ: Kenarlık yok */
         border-radius: 3px;
         cursor: default; /* Varsayılan imleç, sürükleme orta tuşla */
         user-select: none;
-        font-size: 12px;
+        /* font-size: 12px; Bu JS ile ayarlanıyor */
         transform-origin: left center;
     }
+
     .dynamic-label.dragging {
         cursor: grabbing !important; /* Sürüklerken */
-        border-style: dashed; /* Sürüklerken kenarlık stili */
+        border: 1px dashed black !important; /* Sürüklerken kenarlık stili siyah ve kesikli */
+        background: rgba(0,0,0,0.05) !important; /* Sürüklerken çok hafif bir arka plan */
     }
+
     .aircraft-label { /* Uçak etiketine özel */
         cursor: grab; /* Sürükleme imleci */
     }
-    .aircraft-label.dragging {
-        cursor: grabbing !important; /* Sürüklerken */
+    /* .aircraft-label.dragging zaten .dynamic-label.dragging tarafından kapsanıyor */
+
+    /* Etiket içindeki tüm alt elementlerin de siyah ve bold olmasını sağla */
+    .aircraft-label .label-line,
+    .aircraft-label .label-id,
+    .aircraft-label .current-altitude,
+    .aircraft-label .target-altitude,
+    .aircraft-label [data-field="rateOfDescent"],
+    .aircraft-label .aircraft-info-panel div,
+    .aircraft-label .aircraft-info-panel span {
+        color: black !important;
+        font-weight: bold !important; /* Her ihtimale karşı tekrar */
     }
-    .measurement-label { /* Ölçüm etiketine özel */
-        border-color: cyan; /* Kenarlık rengi cyan */
-        color: cyan !important; /* Metin rengi cyan */
-        cursor: grab; /* Sürükleme imleci */
+
+    .clickable-line { /* Uçak etiketi içindeki tıklanabilir satırlar için */
+        cursor: pointer;
+        text-decoration: underline;
+        color: black !important;
+        padding: 2px 0;
+        margin: 1px 0;
     }
-    .measurement-label.dragging {
-        cursor: grabbing !important; /* Sürüklerken */
+    .clickable-line:hover {
+        background-color: rgba(180, 180, 180, 0.3); /* Hover için hafif gri */
+        color: black !important; /* Hover'da renk değişmesin */
     }
+    .target-altitude.clickable-line:hover { /* Uçak etiketi içindeki hedef irtifa için özel hover */
+        background-color: rgba(170, 170, 170, 0.4); /* Hover için biraz daha belirgin gri */
+    }
+
+    .aircraft-label.selected {
+        border: 1px solid black !important; /* Seçiliyken siyah kenarlık */
+        box-shadow: 0 0 6px rgba(0, 0, 0, 0.6); /* Seçiliyken siyah gölge */
+        /* background: transparent !important; // Seçiliyken de transparan kalsın */
+    }
+    .target-altitude { /* Uçak etiketi içindeki hedef irtifa */
+        margin-left: 5px; /* Sol boşluk */
+    }
+    .current-altitude { /* Uçak etiketi içindeki mevcut irtifa */
+        cursor: default; /* Tıklanamaz olduğunu belirt */
+        text-decoration: none !important; /* Alt çizgiyi kaldır */
+    }
+    .label-id { /* Uçak etiketi içindeki ID */
+        cursor: pointer;
+        text-decoration: underline;
+    }
+    .label-id:hover {
+        background-color: rgba(180, 180, 180, 0.2);
+    }
+
+    /* Ölçüm etiketi stilleri */
+    .measurement-label {
+        /* .dynamic-label'den miras alır: background: transparent !important; */
+        /* .dynamic-label'den miras alır: font-weight: bold !important; */
+        color: cyan !important; /* YENİ: Metin rengi cyan */
+        cursor: grab;
+        /* border: 1px solid cyan; /* İsteğe bağlı: Ölçüm etiketi için cyan kenarlık */
+    }
+    /* .measurement-label.dragging .dynamic-label.dragging'den alır */
+
+    .measurement-label .measurement-bearing,
+    .measurement-label .measurement-relative-bearing,
+    .measurement-label .measurement-dist-alt {
+        display: block; /* Ayrı satırda göster */
+        color: cyan !important; /* YENİ: Metin rengi cyan */
+        font-weight: bold !important; /* Kalınlık cyan için de geçerli olsun */
+        margin-bottom: 2px; /* Alt boşluk */
+    }
+    /* --- ETİKET STİLLERİ SONU --- */
+
     /* Geçici Ölçüm Etiketi */
     #tempMeasurementLabel {
         position: absolute;
@@ -225,66 +291,18 @@
         display: none; /* Başlangıçta gizli */
     }
 
-
     .altitude-line span {
         display: inline-block; /* Yan yana durmalarını sağla */
         vertical-align: middle; /* Dikey hizalama (isteğe bağlı) */
     }
-    .clickable-line { cursor: pointer; text-decoration: underline; color: #0f0 !important; padding: 2px 0; margin: 1px 0; }
-    .clickable-line:hover { background-color: rgba(0, 255, 0, 0.2); color: #fff !important; }
-    .target-altitude.clickable-line:hover {
-        background-color: rgba(255, 193, 7, 0.3); /* Sarımsı hover */
-        color: #fff !important;
-    }
-    .aircraft-label.selected { border-color: #0f0; box-shadow: 0 0 5px #0f0; }
-    .target-altitude {
-        color: #ffc107 !important; /* Sarı renk */
-        margin-left: 5px; /* Sol boşluk */
-    }
-    .current-altitude {
-        color: white !important; /* Beyaz kalsın */
-        cursor: default; /* Tıklanamaz olduğunu belirt */
-        text-decoration: none !important; /* Alt çizgiyi kaldır */
-    }
-    .label-id {
-        cursor: pointer;
-        text-decoration: underline;
-        color: #eee !important; /* Hafif farklı renk */
-    }
-    .label-id:hover {
-        color: #fff !important;
-        background-color: rgba(255, 255, 255, 0.1);
-    }
-    .measurement-bearing {
-        display: block; /* Ayrı satırda göster */
-        color: cyan !important; /* Renk cyan */
-        margin-bottom: 2px; /* Alt boşluk */
-    }
-    .measurement-relative-bearing {
-        display: block; /* Ayrı satırda göster */
-        color: cyan !important; /* Renk cyan */
-        margin-bottom: 2px;
-    }
-    .measurement-dist-alt {
-        display: block; /* Ayrı satırda göster */
-        color: cyan !important; /* Renk cyan */
-    }
-    /* Uçak Bilgi Paneli Stilleri */
+    /* Uçak Bilgi Paneli Stilleri (dynamic-label içindeki renkler zaten ayarlandı) */
     .aircraft-info-panel {
-        border-top: 1px solid #777;
+        border-top: 1px solid #555; /* Siyah metinle daha uyumlu bir ayıraç rengi */
         margin-top: 3px;
         padding-top: 3px;
         font-size: 0.9em; /* Ana etiketten biraz daha küçük */
     }
-    .aircraft-info-panel div {
-        color: #ccc; /* Bilgi satırları için daha soluk renk */
-        margin-bottom: 1px;
-    }
-    .aircraft-info-panel span {
-        color: #fff; /* Değerler için beyaz renk */
-        font-weight: normal;
-    }
-
+    /* .aircraft-info-panel div ve span renkleri yukarıda .aircraft-label altında ayarlandı */
 
     /* Uçak Ekleme Formu */
     #addAircraftForm { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(60, 60, 60, 0.95); border: 2px solid #0f0; padding: 20px; border-radius: 8px; z-index: 30; color: white; font-family: Arial, sans-serif; width: 320px; box-shadow: 0 5px 15px rgba(0,0,0,0.5); display: none; }
@@ -313,109 +331,101 @@
         border-color: #00aaff !important;
     }
 
-    /* YENİ CSS */
+    /* YENİ CSS (Bu kısımlar zaten yukarıda vardı, birleştirirken dikkat edin) */
     html, body {
-        width: 100vw;
-        height: 100vh;
-        margin: 0;
-        padding: 0;
-        overflow: hidden;
-        background-color: #333;
-        color: white;
-        font-family: Arial, sans-serif;
+        width: 100vw; height: 100vh; margin: 0; padding: 0; overflow: hidden;
+        background-color: #333; color: white; font-family: Arial, sans-serif;
     }
     canvas {
-        position: fixed;
-        left: 50%;
-        top: 50%;
-        transform: translate(-50%, -50%);
-        z-index: 1;
-        display: block;
-        background: rgba(160, 160, 160, 0.5);
-        cursor: grab;
-        border: none;
+        position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+        z-index: 1; display: block; background: rgba(160, 160, 160, 0.5);
+        cursor: grab; border: none;
     }
-	/* AIRMISS Alert */
-/* AIRMISS Alert */
-#airmissAlert {
-    position: absolute;
-    top: 50%; /* Dikeyde ortalamak için */
-    left: 30px; /* Sol kenardan bırakılacak boşluk (örneğin 30 piksel) */
-    transform: translateY(-50%); /* Sadece dikeyde ortalamak için */
-    /* Eski transform kuralı: transform: translate(-50%, -50%); */
-    
-    background: rgba(0, 0, 0, 0.8);
-    padding: 20px;
-    border: 2px solid red;
-    border-radius: 10px;
-    color: red;
-    font-family: monospace;
-    font-size: 48px; /* Bu font boyutu uyarıyı geniş yapabilir */
-    font-weight: bold;
-    text-align: center; /* Metni kutu içinde ortala */
-    z-index: 50;
-    display: none; /* Başlangıçta gizli */
-    text-shadow: 2px 2px 4px black;
-    
-    /* Uyarı kutusunun genişliğinin ekranı aşmasını engellemek için */
-    /* max-width: calc(100vw - 60px); */ /* Sol ve sağ boşluklar düşünülerek (isteğe bağlı) */
-    /* Örneğin, sol boşluk 30px ise, sağda da en az 30px kalması için */
+    /* AIRMISS Alert */
+    #airmissAlert {
+        position: absolute; top: 50%; left: 30px; transform: translateY(-50%);
+        background: rgba(0, 0, 0, 0.8); padding: 20px; border: 2px solid red;
+        border-radius: 10px; color: red; font-family: monospace; font-size: 48px;
+        font-weight: bold; text-align: center; z-index: 50; display: none;
+        text-shadow: 2px 2px 4px black;
+    }
+    #airmissAlert span { display: block; font-size: 24px; margin-top: 10px; color: white; }
+    #generateScenarioBtn {
+        background-color: #4CAF50; color: white; padding: 10px 20px; margin: 5px;
+        border: none; border-radius: 5px; cursor: pointer; font-size: 14px;
+    }
+    #generateScenarioBtn:hover { background-color: #45a049; }
+    #generateScenarioBtn:active { background-color: #3d8b40; }
+
+    #headingValues div:hover {
+        background-color: #0f0; color: black; box-shadow: 0 0 8px #0f0;
+    }
+
+    #submitManualHeading {
+        padding: 3px 6px; font-size: 11px; background-color: #4CAF50;
+        border: none; color: white; border-radius: 2px; margin-left: 5px;
+    }
+    #submitManualHeading:hover { background-color: #45a049; }
+    #manualHeadingInput {
+        width: 50px; padding: 3px; font-size: 12px; text-align: right;
+        background-color: #ddd; color: #333; border: 1px solid #777; border-radius: 2px;
+    }
+	
+	
+	/* ... (Diğer stilleriniz) ... */
+
+.intercept-btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    /* Gerekirse buton genişliğini ayarlayın, örn: width: 190px; */
 }
 
-#airmissAlert span {
-    display: block;
-    font-size: 24px; /* Bu font boyutu da alt metin için oldukça büyük */
-    margin-top: 10px;
-    color: white;
-}
-#generateScenarioBtn {
-    background-color: #4CAF50;
-    color: white;
-    padding: 10px 20px;
-    margin: 5px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 14px;
-}
-#generateScenarioBtn:hover {
-    background-color: #45a049;
-}
-#generateScenarioBtn:active {
-    background-color: #3d8b40;
-}
-
-#headingValues div:hover { /* Heading listesindeki her bir derece için */
-    background-color: #0f0; /* Yeşil arka plan */
-    color: black;           /* Siyah yazı */
-    box-shadow: 0 0 8px #0f0; /* Yeşil bir "glow" efekti için örnek */
-}
-
-/* Manuel giriş butonu için basit stil */
-#submitManualHeading {
-    padding: 3px 6px;
-    font-size: 11px;
-    background-color: #4CAF50;
-    border: none;
-    color: white;
-    border-radius: 2px;
-    margin-left: 5px;
-}
-#submitManualHeading:hover {
-    background-color: #45a049;
-}
-#manualHeadingInput {
-    width: 50px; /* Genişliği azaltıldı */
-    padding: 3px;
+.intercept-indicator {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 1px solid #888; /* Pasifken daha soluk kenarlık */
+    border-radius: 3px;
+    margin-left: 10px; /* Metinle arasında boşluk */
+    background-color: #666; /* Pasifken daha koyu arka plan */
     font-size: 12px;
-    text-align: right;
-    background-color: #ddd; /* Girdi alanının okunabilirliği için */
-    color: #333;
-    border: 1px solid #777;
-    border-radius: 2px;
+    line-height: 16px; /* Check işaretini dikeyde ortalamak için */
+    text-align: center;
+    color: #0f0; /* Aktif check işareti rengi */
+    font-weight: bold;
+    transition: background-color 0.2s, border-color 0.2s;
 }
 
+/* Aktif intercept durumundaki buton ve gösterge */
+.intercept-btn.intercepting {
+    /* background-color: #e0a800; /* Aktifken buton rengi (isteğe bağlı) */
+    /* border-color: #ffc107; */
+    box-shadow: 0 0 5px #ffc107; /* Aktifken hafif parlama */
+}
+
+.intercept-btn.intercepting .intercept-indicator {
+    background-color: #0f0; /* Aktif (intercept ediyor) durumda yeşil arka plan */
+    border-color: #0a0;   /* Aktifken yeşil kenarlık */
+    color: black;         /* Check işareti siyah */
+}
+
+/* Disabled durumundaki gösterge (daha soluk) */
+.intercept-btn:disabled .intercept-indicator {
+    border-color: #555;
+    background-color: #444;
+    color: #777; /* Check işareti çok soluk veya görünmez */
+}
 </style>
+	
+	
+
+
+
+
+
+
+
 </head>
 <body>
 
@@ -427,8 +437,12 @@
 </div>
 
 <div id="topCenterControls">
-    <button id="interceptButton033" class="control-button" disabled>Intercept LOC 033</button>
-    <button id="interceptButton21L" class="control-button" disabled>Intercept LOC 21L</button>
+    <button id="interceptButton033" class="control-button intercept-btn">
+        Intercept LOC 033 <span class="intercept-indicator"></span>
+    </button>
+    <button id="interceptButton21L" class="control-button intercept-btn">
+        Intercept LOC 21L <span class="intercept-indicator"></span>
+    </button>
     <button id="towerButton" class="control-button" disabled>Tower</button>
     <button id="removeButton" class="control-button" disabled>Remove</button>
 </div>
@@ -539,6 +553,10 @@
         <button id="cancelRunwaySelectionBtn" class="control-button" style="margin: 15px 12px 5px; padding: 10px 22px; background-color: #f44336; border-color: #d32f2f; font-size: 14px;">İptal</button>
     </div>
 </div>
+
+
+
+
 <script>
 // --- Canvas ve DOM Elementleri ---
 const canvas = document.getElementById('radar');
@@ -592,13 +610,11 @@ speedSlider.addEventListener('input', () => {
         timerInterval = null;
     }
     startGameTimer();
-});	
+});
 
-// Script'inizin global alanına (veya uygun bir yere) ekleyin (eğer zaten yoksa):
-// const aircraftTypes = ['C130', 'A342', 'B737', 'B747', 'A321', 'A320', 'A319', 'MD83', 'PC12', 'F16']; // Örnek, sizde zaten olmalı
 const callsignPrefixes = ['THY', 'PGT', 'SXS', 'ONR', 'AFR', 'BAW', 'DLH', 'KLM', 'UAE', 'QTR', 'BER', 'AUA'];
 let scenarioAircraftIdCounter = 0;
-let activeScenarioTimeouts = []; // YENİ: Aktif senaryo zamanlayıcılarını tutacak dizi
+let activeScenarioTimeouts = [];
 
 // --- Uçak Tipleri Veritabanı ---
 const aircraftTypes = ['C130', 'A342', 'B737', 'B747', 'A321', 'A320', 'A319', 'MD83', 'AN12', 'F16'];
@@ -607,16 +623,8 @@ const defaultAircraftSpeeds = { // Knot cinsinden ortalama seyir hızları
     'A320': 300, 'A319': 275, 'MD83': 260, 'AN12': 210, 'F16': 440
 };
 const aircraftPerformanceROC = { // Feet/dakika cinsinden tipik tırmanma oranları
-    'C130': 1800,
-    'A342': 2200,
-    'B737': 2500,
-    'B747': 1500,
-    'A321': 2400,
-    'A320': 2500,
-    'A319': 2400,
-    'MD83': 2300,
-    'AN12': 2000,
-    'F16': 3500
+    'C130': 1800, 'A342': 2200, 'B737': 2500, 'B747': 1500, 'A321': 2400,
+    'A320': 2500, 'A319': 2400, 'MD83': 2300, 'AN12': 2000, 'F16': 3500
 };
 
 // --- Arka Plan Resmi ---
@@ -659,11 +667,10 @@ const RUNWAY_THRESHOLD_DIST_PX = 5; let gameSpeedMultiplier = 1.0;
 const speedMultipliers = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 3, 5, 10];
 let isPaused = false;
 let departureCounter = 0;
-let gameStartTime = null; // Oyunun başlangıç zamanı
-let elapsedTime = 600; // Geçen süre (saniye cinsinden)
-let timerInterval = null; // Zamanlayıcı interval ID'si
-let speedFactor = 1; // Varsayılan hız (1x)
-
+let gameStartTime = null;
+let elapsedTime = 36000;
+let timerInterval = null;
+let speedFactor = 1;
 
 // --- Ölçüm Durumu ---
 let isMeasuring = false; let measurementStartPoint = null; let hoveredAircraftForMeasure = null;
@@ -672,25 +679,19 @@ let hoveredRunwayCenterForMeasure = false;
 
 // --- Uçak Verileri ---
 const aircrafts = [
-    { id: 'THY123', x: 0, y: 0, heading: 210, targetHeading: 210, speedKTS: defaultAircraftSpeeds['A321'] || 220, altitude: 5000, targetAltitude: 5000, rateOfDescent: 0, rateOfClimb: 0, isTakingOff: false, takeoffRunway: null, isIntercepting: false, isHandedOffToTower: false, showVector: false, labelElement: null, labelX: 0, labelY: 0, labelDragged: true, bankAngle: 0, maxBankAngle: 25, commandedTurnDirection: 0, turning: false, type: 'A321', departureTargetFL: 280, showInfoPanel: false, draggedLabelDeltaX: 0, draggedLabelDeltaY: 0, initialPosSet: false },
-    { id: 'PGS456', x: 0, y: 0, heading: 30, targetHeading: 30, speedKTS: defaultAircraftSpeeds['B737'] || 250, altitude: 4000, targetAltitude: 4000, rateOfDescent: 0, rateOfClimb: 0, isTakingOff: false, takeoffRunway: null, isIntercepting: false, isHandedOffToTower: false, showVector: false, labelElement: null, labelX: 0, labelY: 0, labelDragged: true, bankAngle: 0, maxBankAngle: 25, commandedTurnDirection: 0, turning: false, type: 'B737', departureTargetFL: null, showInfoPanel: false, draggedLabelDeltaX: 0, draggedLabelDeltaY: 0, initialPosSet: false },
+    { id: 'THY123', x: 0, y: 0, heading: 210, targetHeading: 210, speedKTS: defaultAircraftSpeeds['A321'] || 220, altitude: 5000, targetAltitude: 5000, rateOfDescent: 0, rateOfClimb: 0, isTakingOff: false, takeoffRunway: null, isIntercepting: false, isHandedOffToTower: false, showVector: false, labelElement: null, labelX: 0, labelY: 0, labelDragged: true, bankAngle: 0, maxBankAngle: 25, commandedTurnDirection: 0, turning: false, type: 'A321', departureTargetFL: 280, showInfoPanel: false, draggedLabelDeltaX: 0, draggedLabelDeltaY: 0, lastHeadingUpdateTime: 0, initialPosSet: false },
+    { id: 'PGS456', x: 0, y: 0, heading: 30, targetHeading: 30, speedKTS: defaultAircraftSpeeds['B737'] || 250, altitude: 4000, targetAltitude: 4000, rateOfDescent: 0, rateOfClimb: 0, isTakingOff: false, takeoffRunway: null, isIntercepting: false, isHandedOffToTower: false, showVector: false, labelElement: null, labelX: 0, labelY: 0, labelDragged: true, bankAngle: 0, maxBankAngle: 25, commandedTurnDirection: 0, turning: false, type: 'B737', departureTargetFL: null, showInfoPanel: false, draggedLabelDeltaX: 0, draggedLabelDeltaY: 0, lastHeadingUpdateTime: 0, initialPosSet: false },
 ];
 
 // --- WAYPOINT ADDITION START ---
 const waypoints = [
-    { name: 'PETAR', angle: 270, distanceNM: 43 },
-    { name: 'SALGO', angle: 296, distanceNM: 43.3 },
-    { name: 'ASTAL', angle: 6,   distanceNM: 38.8 },
-    { name: 'İLHAN', angle: 57,  distanceNM: 39 },
-    { name: 'GURBU', angle: 83,  distanceNM: 40 },
-    { name: 'KUBER', angle: 118, distanceNM: 33.5 },
-    { name: 'YUCEL', angle: 136, distanceNM: 42.3 },
-    { name: 'BAKIR', angle: 155, distanceNM: 42.9 },
-    { name: 'TELVO', angle: 181, distanceNM: 44 },
-    { name: 'HAY',   angle: 206, distanceNM: 46 }
+    { name: 'PETAR', angle: 270, distanceNM: 43 }, { name: 'SALGO', angle: 296, distanceNM: 43.3 },
+    { name: 'ASTAL', angle: 6,   distanceNM: 38.8 }, { name: 'İLHAN', angle: 57,  distanceNM: 39 },
+    { name: 'GURBU', angle: 83,  distanceNM: 40 },   { name: 'KUBER', angle: 118, distanceNM: 33.5 },
+    { name: 'YUCEL', angle: 136, distanceNM: 42.3 }, { name: 'BAKIR', angle: 155, distanceNM: 42.9 },
+    { name: 'TELVO', angle: 181, distanceNM: 44 },   { name: 'HAY',   angle: 206, distanceNM: 46 }
 ];
 // --- WAYPOINT ADDITION END ---
-
 
 // --- Yardımcı Fonksiyonlar ---
 function toRadians(degrees) { return degrees * Math.PI / 180; }
@@ -704,52 +705,111 @@ function formatBearing(b) { return (b === null || b === undefined) ? "---" : Mat
 function formatRelativeBearing(rb) { if (rb === null || rb === undefined) return ""; const r = Math.round(Math.abs(rb)); const d = rb >= 0 ? 'R' : 'L'; return `${d}${r.toString().padStart(2, '0')}`; }
 function formatFlightLevel(alt) { return (alt === null || alt === undefined) ? "---" : `F${Math.round(alt / 100).toString().padStart(3, '0')}`; }
 
-// Süreyi MM:SS formatına çeviren fonksiyon
-function formatTime(seconds) {
-    const minutes = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+function calculateDynamicInterceptAngle(aircraft, locCourse) {
+    const interceptCutAngle = 30; // İstenen kesme açısı (derece)
+
+    // Pist merkezi (veya LOC hattının geçtiği referans nokta)
+    const refX = centerX;
+    const refY = centerY;
+
+    // Uçaktan referans noktasına olan vektör
+    const vectorAircraftToRefX = refX - aircraft.x;
+    const vectorAircraftToRefY = refY - aircraft.y;
+
+    // Uçaktan referans noktasına olan açı (Kuzey 0, saat yönünde artan)
+    const angleAircraftToRef = toDegrees(Math.atan2(vectorAircraftToRefX, -vectorAircraftToRefY));
+
+    // Uçağın LOC'a göre hangi tarafta olduğunu ve nasıl bir kesme yapması gerektiğini belirle
+    // angleDiff(A, B) -> A'dan B'ye en kısa açı.
+    // Eğer locCourse, angleAircraftToRef'in "sağında" ise (saat yönünde), sola doğru kesmeliyiz.
+    // Eğer locCourse, angleAircraftToRef'in "solunda" ise (saat yönü tersinde), sağa doğru kesmeliyiz.
+    let diff = angleDiff(locCourse, angleAircraftToRef);
+
+    let targetHeading;
+
+    if (Math.abs(diff) < 5) { // Uçak zaten neredeyse LOC hattı üzerinde (referans noktasına göre)
+        targetHeading = locCourse; // Doğrudan LOC'a dön
+    } else if (diff > 0) {
+        // LOC, uçağın referans noktasına baktığı açının "sağında".
+        // Sola dönerek kesmeli (LOC + kesme açısı)
+        targetHeading = (locCourse + interceptCutAngle + 360) % 360;
+    } else {
+        // LOC, uçağın referans noktasına baktığı açının "solunda".
+        // Sağa dönerek kesmeli (LOC - kesme açısı)
+        targetHeading = (locCourse - interceptCutAngle + 360) % 360;
+    }
+    
+    // Ekstra kontrol: Eğer uçak zaten LOC'a doğru bir kesme açısıyla uçuyorsa
+    // ve hedef baş mevcut baştan çok farklı bir dönüş gerektiriyorsa,
+    // mevcut başı korumak veya daha yumuşak bir ayar yapmak daha iyi olabilir.
+    // Bu kısım daha fazla ayar gerektirebilir.
+    // Örneğin, eğer uçak zaten LOC'a 30-60 derece arası bir açıyla yaklaşıyorsa,
+    // ve hesaplanan targetHeading bu yönden çok saptırıyorsa, bir sorun olabilir.
+
+    // Şimdilik yukarıdaki hesaplamayı kullanalım.
+    // En iyi sonuç için, uçağın localizer hattına olan dik mesafesi ve
+    // kesişme noktası gibi geometrik hesaplamalar yapılmalıdır.
+
+    return Math.round(targetHeading);
+}
+
+
+// Süreyi HH:MM:SS formatına çeviren fonksiyon
+function formatTime(totalSeconds) {
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const secs = Math.floor(totalSeconds % 60); // Kalan saniyeler
+
+    // Her zaman iki basamaklı göstermek için padStart kullan
+    const formattedHours = hours.toString().padStart(2, '0');
+    const formattedMinutes = minutes.toString().padStart(2, '0');
+    const formattedSeconds = secs.toString().padStart(2, '0');
+
+    return `${formattedHours}:${formattedMinutes}:${formattedSeconds}`;
 }
 
 // Zamanlayıcıyı başlatma ve güncelleme fonksiyonu
 function startGameTimer() {
     const gameTimer = document.getElementById('gameTimer');
-    if (gameTimer && elapsedTime === 600) {
-        gameTimer.textContent = formatTime(elapsedTime); // Initial display: 10:00
+
+    // Başlangıçta veya yeniden başlatıldığında zamanı hemen ayarla
+    if (gameTimer) {
+        gameTimer.textContent = formatTime(Math.floor(elapsedTime)); // Math.floor() ile tam saniye gösterimi
     }
+
     // Clear any existing interval
     if (timerInterval) {
         clearInterval(timerInterval);
         timerInterval = null;
     }
+
     if (!isPaused) {
         timerInterval = setInterval(() => {
             if (!isPaused) {
-                console.log(`Timer tick, speedFactor: ${speedFactor}, elapsedTime: ${elapsedTime}`); // Debug
-                elapsedTime += speedFactor; // Increment by speedFactor (e.g., 0.5)
+                // speedFactor, her bir "gerçek" saniyede oyun zamanına eklenecek saniye sayısıdır.
+                // Örneğin, speedFactor = 1 ise, her saniye 1 oyun saniyesi eklenir.
+                // speedFactor = 2 ise, her saniye 2 oyun saniyesi eklenir (oyun 2x hızında).
+                elapsedTime += speedFactor; 
                 if (gameTimer) {
-                    gameTimer.textContent = formatTime(Math.floor(elapsedTime)); // Use Math.floor for display
+                    gameTimer.textContent = formatTime(Math.floor(elapsedTime)); // Gösterimi güncelle
                 }
             }
-        }, 1000); // Run every real second
+        }, 1000); // Her 1000 milisaniyede (1 gerçek saniyede) bir çalışır
     }
 }
 
-// Zamanlayıcıyı duraklatma/devam ettirme fonksiyonu
 function toggleTimer(pause) {
     if (pause) {
         if (timerInterval) {
             clearInterval(timerInterval);
             timerInterval = null;
-            console.log("Timer paused"); // Debug
         }
     } else {
-        if (timerInterval) {
+        if (timerInterval) { // Clear any existing before restarting
             clearInterval(timerInterval);
             timerInterval = null;
         }
-        startGameTimer(); // Restart timer
-        console.log("Timer resumed"); // Debug
+        startGameTimer();
     }
 }
 
@@ -758,100 +818,58 @@ function worldToScreen(worldX, worldY) { return { x: (worldX * zoom) + panX, y: 
 function screenToWorld(screenX, screenY) { const r = canvas.getBoundingClientRect(); return { x: (screenX - r.left - panX) / zoom, y: (screenY - r.top - panY) / zoom }; }
 
 // --- Canvas ve Arka Plan Boyutlandırma ---
-
 function resizeCanvas() {
-    // Yeniden boyutlandırma *öncesi* mevcut değerleri sakla.
-    // Bu değerler, fonksiyonun ilk çağrılışında 'undefined' olabilir.
     const prevCanvasWidth = canvasWidth;
     const prevCanvasHeight = canvasHeight;
     const oldPanX = panX;
     const oldPanY = panY;
-    const currentZoom = zoom; // Mevcut zoom seviyesi (tam ekran geçişinde değişmediğini varsayıyoruz)
+    const currentZoom = zoom;
 
-    // Yeni canvas boyutlarını gövde (body) veya ana kapsayıcıya göre hesapla
     const bodyWidth = document.body.clientWidth;
     const bodyHeight = document.body.clientHeight;
-    // Canvas'ı kare yapmak ve ekrana sığdırmak için genellikle en küçük boyut kullanılır
     const newSize = Math.min(bodyWidth, bodyHeight);
 
-    // Global canvas boyut değişkenlerini güncelle
     canvasWidth = newSize;
     canvasHeight = newSize;
 
-    // Cihaz piksel oranını (DPR) al ve canvas'ın gerçek (backing store) çözünürlüğünü ayarla
     const dpr = window.devicePixelRatio || 1;
     canvas.width = canvasWidth * dpr;
     canvas.height = canvasHeight * dpr;
 
-    // Canvas'ın CSS ile ekranda görünecek boyutlarını ayarla
     canvas.style.width = `${canvasWidth}px`;
     canvas.style.height = `${canvasHeight}px`;
 
-    // Canvas context'inin transformasyonunu sıfırla ve DPR'ye göre ölçekle
-    // Bu, her çizim döngüsünün başında da yapılabilir, ancak resize'da yapmak da yaygındır.
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.scale(dpr, dpr);
 
-    // Yeni ekran merkezini (canvas'ın kendi piksel koordinat sisteminde) hesapla
     const newScreenCenterX = canvasWidth / 2;
     const newScreenCenterY = canvasHeight / 2;
 
-    // Eğer bu ilk boyutlandırma değilse (yani önceki boyutlar geçerli sayılarla tanımlıysa)
-    // ve zoom geçerli bir değerse, pan değerlerini görünüm merkezini koruyacak şekilde ayarla.
     if (typeof prevCanvasWidth === 'number' && typeof prevCanvasHeight === 'number' &&
         prevCanvasWidth > 0 && prevCanvasHeight > 0 && currentZoom !== 0) {
-
-        // 1. Yeniden boyutlandırma *öncesi* ekran merkezinin baktığı dünya koordinatlarını bul:
-        //    Ekran merkezi piksel koordinatları: (prevCanvasWidth / 2, prevCanvasHeight / 2)
-        //    Bu noktanın dünya koordinatları = (ekran_koordinatı - pan_değeri_eski) / zoom_değeri_eski
         const worldPointX_atOldScreenCenter = (prevCanvasWidth / 2 - oldPanX) / currentZoom;
         const worldPointY_atOldScreenCenter = (prevCanvasHeight / 2 - oldPanY) / currentZoom;
-
-        // 2. Yeni panX ve panY değerlerini, bu saklanan dünya noktasını *yeni* ekran merkezine getirecek şekilde ayarla:
-        //    yeni_pan_değeri = yeni_ekran_merkezi_piksel - dünya_koordinatı * zoom_değeri_yeni
-        //    (Zoom'un değişmediğini varsaydığımız için currentZoom kullanıyoruz)
         panX = newScreenCenterX - worldPointX_atOldScreenCenter * currentZoom;
         panY = newScreenCenterY - worldPointY_atOldScreenCenter * currentZoom;
     }
-    // else durumu: Bu muhtemelen sayfanın ilk yüklenmesi veya önceki boyutların geçersiz olmasıdır.
-    // Bu durumda panX ve panY'nin başlangıç değerleri (genellikle 0,0) korunur.
-    // Eğer başlangıçta dünya (0,0)'ı ekran merkezinde olsaydı, panX = newScreenCenterX; panY = newScreenCenterY; olurdu.
-    // Mevcut sisteminizde panX=0, panY=0 ile başlanıyorsa, bu else bloğu pan değerlerini değiştirmez.
 
-    // Global ekran merkezi koordinatlarını güncelle (bunlar canvas'ın kendi piksel cinsinden merkezi).
-    // Bu değerler, radar daireleri, pist gibi statik elemanların çiziminde referans alınabilir.
     centerX = newScreenCenterX;
     centerY = newScreenCenterY;
 
-    // Başlangıçta pozisyonu ayarlanmamış uçaklar için (bu kısım sizin kodunuzdan)
-    // Bu blok, tam ekran değişikliğinden sonra MEVCUT uçakların dünya koordinatlarını DEĞİŞTİRMEMELİDİR.
-    // Sadece `initialPosSet = false` olan (yani yeni eklenmiş ve henüz pozisyonu radar merkezine
-    // göre ayarlanmamış) uçakları etkiler.
     aircrafts.forEach(ac => {
-        if (!ac.initialPosSet) { // Sadece ilk pozisyonu ayarlanmamışsa
-            if (ac.id === 'THY123') { // Bu örnek uçaklar için özel pozisyonlama
-                ac.x = centerX + nmToWorldPixels(10);
-                ac.y = centerY - nmToWorldPixels(7.5);
+        if (!ac.initialPosSet) {
+            if (ac.id === 'THY123') {
+                ac.x = centerX + nmToWorldPixels(10); ac.y = centerY - nmToWorldPixels(7.5);
             } else if (ac.id === 'PGS456') {
-                ac.x = centerX - nmToWorldPixels(5);
-                ac.y = centerY + nmToWorldPixels(12.5);
-            } else { // Diğer yeni uçaklar için rastgele pozisyon (eğer böyle bir mantık varsa)
-                  // veya generateScenario'da atanan x,y değerleri zaten dünya koordinatlarıdır ve burada değiştirilmemelidir.
-                  // Bu blok daha çok, oyun ilk başladığında manuel olarak eklenen örnek uçaklar için olabilir.
-                  // Senaryo ile eklenen uçakların initialPosSet = true ile gelmesi ve buraya girmemesi beklenir.
+                ac.x = centerX - nmToWorldPixels(5); ac.y = centerY + nmToWorldPixels(12.5);
+            } else {
                 ac.x = centerX + (Math.random() - 0.5) * nmToWorldPixels(innerCircleRadiusNM * 2);
                 ac.y = centerY + (Math.random() - 0.5) * nmToWorldPixels(innerCircleRadiusNM * 2);
             }
             ac.initialPosSet = true;
         }
     });
-
-    // Zamanlayıcıyı yeniden başlat/güncelle (bu kısım sizin kodunuzdan)
-    // Eğer zamanlayıcınız elapsedTime gibi durumları etkiliyorsa,
-    // her resize'da sıfırlanmaması için startGameTimer'ın iç mantığını gözden geçirin.
-    // Mevcut startGameTimer fonksiyonunuz elapsedTime'i sıfırlamıyor, sadece interval'i yeniden kuruyor,
-    // bu genellikle sorun teşkil etmez.
-    startGameTimer();
+    startGameTimer(); // Timer'ı yeniden başlat/güncelle
 }
 
 // --- Çizim Fonksiyonları ---
@@ -868,9 +886,7 @@ function drawRadar() {
 
     drawRadarCircles();
     drawDirectionLines();
-    // --- WAYPOINT ADDITION START ---
     drawWaypoints();
-    // --- WAYPOINT ADDITION END ---
     drawRunwayAndLocalizers();
 
     if (isMeasuring && measurementStartPoint) {
@@ -885,29 +901,20 @@ function drawRadar() {
             const ac = aircrafts.find(a => a.id === measurementStartPoint.id);
             if (ac) drawMeasurementHighlight(ac);
         } else if (measurementStartPoint.type === 'runwayCenter') {
-            ctx.save();
-            ctx.strokeStyle = 'cyan';
-            ctx.lineWidth = 2 / zoom;
+            ctx.save(); ctx.strokeStyle = 'cyan'; ctx.lineWidth = 2 / zoom;
             const crosshairSize = 6 / zoom;
             ctx.beginPath();
-            ctx.moveTo(centerX - crosshairSize, centerY);
-            ctx.lineTo(centerX + crosshairSize, centerY);
-            ctx.moveTo(centerX, centerY - crosshairSize);
-            ctx.lineTo(centerX, centerY + crosshairSize);
-            ctx.stroke();
-            ctx.restore();
+            ctx.moveTo(centerX - crosshairSize, centerY); ctx.lineTo(centerX + crosshairSize, centerY);
+            ctx.moveTo(centerX, centerY - crosshairSize); ctx.lineTo(centerX, centerY + crosshairSize);
+            ctx.stroke(); ctx.restore();
         }
     }
 
     if (isMeasuring && !measurementStartPoint && (hoveredAircraftForMeasure || hoveredRunwayCenterForMeasure)) {
         aircrafts.forEach(ac => { ac.highlighted = (ac === hoveredAircraftForMeasure); });
         if (hoveredRunwayCenterForMeasure) {
-            ctx.save();
-            ctx.fillStyle = 'rgba(0, 255, 255, 0.5)';
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, 5 / zoom, 0, 2 * Math.PI);
-            ctx.fill();
-            ctx.restore();
+            ctx.save(); ctx.fillStyle = 'rgba(0, 255, 255, 0.5)'; ctx.beginPath();
+            ctx.arc(centerX, centerY, 5 / zoom, 0, 2 * Math.PI); ctx.fill(); ctx.restore();
         }
     } else {
         aircrafts.forEach(ac => { ac.highlighted = false; });
@@ -916,8 +923,11 @@ function drawRadar() {
     measurements.forEach(m => drawMeasurementLine(m));
     if (pendingAircraftLocation) { drawPlacementMarker(pendingAircraftLocation); }
     aircrafts.forEach(ac => { drawAircraft(ac); if (showVectors) { drawSpeedVector(ac); } });
-    ctx.restore();
-    aircrafts.forEach(updateAircraftLabelPositionDOM); measurements.forEach(updateMeasurementLabelPositionDOM);
+    ctx.restore(); // Pan ve zoom transformasyonunu geri al
+
+    // Etiketler ve bağlantı çizgileri, pan/zoom'dan etkilenmeyen mutlak canvas koordinatlarında çizilir
+    aircrafts.forEach(updateAircraftLabelPositionDOM);
+    measurements.forEach(updateMeasurementLabelPositionDOM);
     aircrafts.forEach(ac => { if (ac.labelDragged) { drawConnectionLine(ac, 'aircraft'); } });
     measurements.forEach(m => { if (m.labelDragged) { drawConnectionLine(m, 'measurement'); } });
 }
@@ -931,38 +941,30 @@ function updateTemporaryMeasurementLabel() {
         const worldMousePos = screenToWorld(lastMouseX, lastMouseY);
         let startX = measurementStartPoint.x; let startY = measurementStartPoint.y;
         if (measurementStartPoint.type === 'aircraft') {
-             const ac = aircrafts.find(a => a.id === measurementStartPoint.id);
-             if (ac) { startX = ac.x; startY = ac.y; }
-             else {
-                 tempMeasurementLabel.style.display = 'none';
-                 return;
-             }
+            const ac = aircrafts.find(a => a.id === measurementStartPoint.id);
+            if (ac) { startX = ac.x; startY = ac.y; }
+            else { tempMeasurementLabel.style.display = 'none'; return; }
         }
-
         const dx = worldMousePos.x - startX; const dy = worldMousePos.y - startY;
         const distanceNM = worldPixelsToNm(Math.sqrt(dx * dx + dy * dy));
         const bearing = calculateBearing(startX, startY, worldMousePos.x, worldMousePos.y);
-
         tempMeasurementLabel.style.display = 'block';
         const labelWidth = tempMeasurementLabel.offsetWidth || 80;
         const labelHeight = tempMeasurementLabel.offsetHeight || 20;
-        let labelX = lastMouseX + 15;
-        let labelY = lastMouseY - 10;
+        let labelX = lastMouseX + 15; let labelY = lastMouseY - 10;
         labelX = Math.max(0, Math.min(labelX, window.innerWidth - labelWidth - 5));
         labelY = Math.max(0, Math.min(labelY, window.innerHeight - labelHeight - 5));
-
         tempMeasurementLabel.style.left = `${labelX}px`;
         tempMeasurementLabel.style.top = `${labelY}px`;
         tempMeasurementLabel.textContent = `${formatBearing(bearing)}° / ${distanceNM.toFixed(1)} NM`;
     } catch (error) {
         console.error("Error updating temporary measurement label:", error);
-        tempMeasurementLabel.style.display = 'none';
+        if (tempMeasurementLabel) tempMeasurementLabel.style.display = 'none';
     }
 }
 
-
 function drawRadarCircles() {
-    const maxR = innerCircleRadiusNM * 4; ctx.strokeStyle = 'rgba(128, 0, 32, 0.6)'; ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    ctx.strokeStyle = 'rgba(128, 0, 32, 0.6)'; ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
     ctx.lineWidth = 1 / zoom; ctx.font = `${12 / zoom}px Arial`; ctx.textAlign = 'center';
     for (let i = 1; i <= 4; i++) {
         const rNM = innerCircleRadiusNM * i; const rPx = nmToWorldPixels(rNM);
@@ -982,43 +984,24 @@ function drawDirectionLines() {
     });
 }
 
-// --- WAYPOINT ADDITION START ---
 function drawWaypoints() {
-    const waypointColor = 'saddlebrown'; // Koyu kahverengi üçgen dolgusu
-    const waypointTextColor = 'saddlebrown'; // Koyu kahverengi metin
-    const triangleSize = 6 / zoom; // Üçgen sembolünün taban boyutu
-    const textOffsetY = (triangleSize * 0.5) + (10 / zoom); // Metnin üçgenin altına yerleştirilmesi için ofset
-
-    ctx.fillStyle = waypointColor;
-    ctx.strokeStyle = 'rgba(50,20,0,0.8)'; // Kenarlık için koyu kahverengi tonu
-    ctx.lineWidth = 0.5 / zoom;
-
+    const waypointColor = 'saddlebrown'; const waypointTextColor = 'saddlebrown';
+    const triangleSize = 6 / zoom; const textOffsetY = (triangleSize * 0.5) + (10 / zoom);
+    ctx.fillStyle = waypointColor; ctx.strokeStyle = 'rgba(50,20,0,0.8)'; ctx.lineWidth = 0.5 / zoom;
     waypoints.forEach(wp => {
-        const angleRad = toRadians(wp.angle);
-        const distancePixels = nmToWorldPixels(wp.distanceNM);
-
-        // Waypoint'in radar merkezine göre konumu
+        const angleRad = toRadians(wp.angle); const distancePixels = nmToWorldPixels(wp.distanceNM);
         const wpX = centerX + Math.sin(angleRad) * distancePixels;
         const wpY = centerY - Math.cos(angleRad) * distancePixels;
-
-        // Üçgen çizimi
         ctx.beginPath();
-        ctx.moveTo(wpX, wpY - triangleSize * 0.66); // Üst köşe
-        ctx.lineTo(wpX - triangleSize * 0.5, wpY + triangleSize * 0.33); // Sol alt köşe
-        ctx.lineTo(wpX + triangleSize * 0.5, wpY + triangleSize * 0.33); // Sağ alt köşe
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-
-        // Waypoint isminin çizimi
-        ctx.fillStyle = waypointTextColor;
-        ctx.font = `${10 / zoom}px Arial`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'top';
+        ctx.moveTo(wpX, wpY - triangleSize * 0.66);
+        ctx.lineTo(wpX - triangleSize * 0.5, wpY + triangleSize * 0.33);
+        ctx.lineTo(wpX + triangleSize * 0.5, wpY + triangleSize * 0.33);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = waypointTextColor; ctx.font = `${10 / zoom}px Arial`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'top';
         ctx.fillText(wp.name, wpX, wpY + triangleSize * 0.33 + (2 / zoom));
     });
 }
-// --- WAYPOINT ADDITION END ---
 
 function drawRunwayAndLocalizers() {
     ctx.save(); ctx.translate(centerX, centerY); ctx.rotate(toRadians(runwayCourse));
@@ -1028,14 +1011,7 @@ function drawRunwayAndLocalizers() {
     if (showLocalizerLeft) { drawLocalizerBeam(1); } if (showLocalizerRight) { drawLocalizerBeam(-1); }
 }
 function drawLocalizerBeam(side) {
-    let angleDeg;
-    if (side === 1) {
-        angleDeg = localizerCourse21L;
-    } else if (side === -1) {
-        angleDeg = localizerCourse033Right;
-    } else {
-        return;
-    }
+    let angleDeg = (side === 1) ? localizerCourse21L : localizerCourse033Right;
     const rRad = toRadians(angleDeg);
     const defC = 'rgba(128, 0, 32, 0.8)'; const hiC = '#ffffff'; const ptR = 2 / zoom; const pts = [];
     for (let i = 1; i <= localizerLengthNM; i++) {
@@ -1056,200 +1032,229 @@ function drawAircraft(ac) {
     ctx.save();
     ctx.translate(ac.x, ac.y);
     const s = 4 / zoom;
-
     if (ac.highlighted) {
-        ctx.beginPath();
-        ctx.arc(0, 0, s + 5, 0, 2 * Math.PI);
-        ctx.strokeStyle = '#00aaff';
-        ctx.lineWidth = 3 / zoom;
-        ctx.shadowColor = '#00aaff';
-        ctx.shadowBlur = 10 / zoom;
-        ctx.stroke();
-        ctx.shadowBlur = 0;
+        ctx.beginPath(); ctx.arc(0, 0, s + 5, 0, 2 * Math.PI);
+        ctx.strokeStyle = '#00aaff'; ctx.lineWidth = 3 / zoom;
+        ctx.shadowColor = '#00aaff'; ctx.shadowBlur = 10 / zoom;
+        ctx.stroke(); ctx.shadowBlur = 0;
     }
-
+    ctx.fillStyle = ac === selectedAircraft ? '#0f0' : '#fff'; // Yeşil seçiliyse, değilse beyaz
     if (isMeasuring && hoveredAircraftForMeasure && ac.id === hoveredAircraftForMeasure.id) {
-        ctx.fillStyle = '#00aaff';
-    } else {
-        ctx.fillStyle = ac === selectedAircraft ? '#0f0' : '#fff';
+        ctx.fillStyle = '#00aaff'; // Ölçüm için hover rengi
     }
-
-    ctx.beginPath();
-    ctx.arc(0, 0, s, 0, 2 * Math.PI);
-    ctx.fill();
-
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.7)';
-    ctx.lineWidth = 1 / zoom;
-    ctx.beginPath();
-    ctx.arc(0, 0, s, 0, 2 * Math.PI);
-    ctx.stroke();
-
+    ctx.beginPath(); ctx.arc(0, 0, s, 0, 2 * Math.PI); ctx.fill();
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.7)'; ctx.lineWidth = 1 / zoom; // Uçak sembolü kenarlığı
+    ctx.beginPath(); ctx.arc(0, 0, s, 0, 2 * Math.PI); ctx.stroke();
     ctx.restore();
 }
+
 function drawSpeedVector(ac) {
-    const spNMm = ac.speedKTS / 60; const tLenNM = spNMm * vectorMinutes;
-    const tLenPx = nmToWorldPixels(tLenNM); const segLenPx = tLenPx / vectorMinutes;
-    const rad = toRadians(ac.heading); const sX = ac.x; const sY = ac.y; ctx.lineWidth = 2 / zoom;
-    for (let i = 0; i < vectorMinutes; i++) {
-        const segmentStartDist = i * segLenPx; const segmentEndDist = (i + 1) * segLenPx;
-        const segSX = sX + Math.sin(rad) * segmentStartDist; const segSY = sY - Math.cos(rad) * segmentStartDist;
-        const segEX = sX + Math.sin(rad) * segmentEndDist; const segEY = sY - Math.cos(rad) * segmentEndDist;
-        ctx.strokeStyle = i % 2 === 0 ? 'rgba(60, 60, 60, 0.9)' : 'rgba(255, 255, 255, 0.9)';
-        ctx.beginPath(); ctx.moveTo(segSX, segSY); ctx.lineTo(segEX, segEY); ctx.stroke();
+    const spNMm = ac.speedKTS / 60; // NM per minute
+    const totalMinutes = vectorMinutes;
+    const segmentLengthNM = spNMm; // Each segment represents 1 minute of travel
+
+    const rad = toRadians(ac.heading); // Uçağın global yönü (0 derece = -Y ekseni)
+    const startX = ac.x;
+    const startY = ac.y;
+
+    const baseLineWidth = 1 / zoom;
+    ctx.lineWidth = baseLineWidth * 1.3;
+
+    const arrowSize = 8 / zoom;
+    const arrowAngleRad = Math.PI / 8; // Okun yarım açısı
+
+    for (let i = 0; i < totalMinutes; i++) {
+        const segmentStartDistPx = nmToWorldPixels(i * segmentLengthNM);
+        const segmentEndDistPx = nmToWorldPixels((i + 1) * segmentLengthNM);
+
+        const segStartX = startX + Math.sin(rad) * segmentStartDistPx;
+        const segStartY = startY - Math.cos(rad) * segmentStartDistPx;
+        const segEndX = startX + Math.sin(rad) * segmentEndDistPx;
+        const segEndY = startY - Math.cos(rad) * segmentEndDistPx;
+
+        ctx.strokeStyle = i % 2 === 0 ? 'rgba(0, 0, 0, 0.9)' : 'rgba(255, 255, 255, 0.9)';
+
+        ctx.beginPath();
+        ctx.moveTo(segStartX, segStartY);
+        ctx.lineTo(segEndX, segEndY);
+        ctx.stroke();
+
+        // Ok başını çiz
+        ctx.save();
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.95)'; // Ok başı her zaman siyah
+
+        // Okun sivri ucu (segEndX, segEndY)
+        // İki taban noktasını hesaplayalım.
+        // Ok, (segEndX, segEndY)'den geriye doğru, uçağın gittiği yöne zıt bir açıyla açılmalı.
+        // Uçağın gidiş yönünün tersi olan açı: rad + Math.PI
+        const tailAngle1 = rad + Math.PI - arrowAngleRad;
+        const tailAngle2 = rad + Math.PI + arrowAngleRad;
+
+        const tailX1 = segEndX + arrowSize * Math.sin(tailAngle1);
+        const tailY1 = segEndY - arrowSize * Math.cos(tailAngle1);
+
+        const tailX2 = segEndX + arrowSize * Math.sin(tailAngle2);
+        const tailY2 = segEndY - arrowSize * Math.cos(tailAngle2);
+
+        ctx.beginPath();
+        ctx.moveTo(segEndX, segEndY); // Sivri uç
+        ctx.lineTo(tailX1, tailY1);   // Bir taban noktası
+        ctx.lineTo(tailX2, tailY2);   // Diğer taban noktası
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
     }
-    const eX = sX + Math.sin(rad) * tLenPx; const eY = sY - Math.cos(rad) * tLenPx;
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'; ctx.beginPath(); ctx.arc(eX, eY, 1.5 / zoom, 0, 2 * Math.PI); ctx.fill();
 }
+
 function drawConnectionLine(item, type) {
     if (!item.labelElement || !item.labelDragged) return;
     let sSX, sSY;
-    let strC = type === 'aircraft' ? 'rgba(0, 0, 0, 0.6)' : 'rgba(0, 255, 255, 0.6)';
-    if (type === 'aircraft') { const sP = worldToScreen(item.x, item.y); sSX = sP.x; sSY = sP.y; }
-    else if (type === 'measurement') {
+    let strC; // Rengi burada belirleyeceğiz
+    let lineWidth = 1.5; // Varsayılan çizgi kalınlığı
+
+    if (type === 'aircraft') {
+        strC = 'rgba(0, 0, 0, 0.7)'; // Uçak bağlantı çizgisi siyah
+        // lineWidth = 1.5; // Zaten varsayılan
+        const sP = worldToScreen(item.x, item.y); sSX = sP.x; sSY = sP.y;
+    } else if (type === 'measurement') {
+        strC = 'rgba(0, 255, 255, 0.75)'; // YENİ: Ölçüm bağlantı çizgisi cyan (biraz daha opak)
+        // lineWidth = 1.5; // Zaten varsayılan
         const mXW = (item.start.x + item.end.x) / 2; const mYW = (item.start.y + item.end.y) / 2;
         const sP = worldToScreen(mXW, mYW); sSX = sP.x; sSY = sP.y;
     } else { return; }
-    const lR = item.labelElement.getBoundingClientRect(); const cR = canvas.getBoundingClientRect();
-    const lCX = lR.left - cR.left + lR.width / 2; const lCY = lR.top - cR.top + lR.height / 2;
-    ctx.save(); const dpr = window.devicePixelRatio || 1; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.beginPath(); ctx.moveTo(sSX, sSY); ctx.lineTo(lCX, lCY);
-    ctx.strokeStyle = strC; ctx.lineWidth = 1; ctx.setLineDash([2, 2]); ctx.stroke();
-    ctx.setLineDash([]); ctx.restore();
+
+    const lR = item.labelElement.getBoundingClientRect();
+    const cR = canvas.getBoundingClientRect();
+    // Etiketin merkezine bağla
+    const lCX = lR.left - cR.left + lR.width / 2;
+    const lCY = lR.top - cR.top + lR.height / 2;
+
+    ctx.save();
+    const dpr = window.devicePixelRatio || 1;
+    // drawRadar sonundaki ctx.restore() sonrası bu fonksiyon çağrıldığı için
+    // pan/zoom'suz mutlak canvas koordinatlarına geçiş yapmalıyız.
+    // sSX, sSY (worldToScreen'den gelen) ve lCX, lCY (DOM'dan gelen) canvas'ın görünen CSS pikselleridir.
+    // Canvas context'i zaten DPR'ye göre ölçeklenmiş durumda (resizeCanvas içinde ctx.scale(dpr,dpr)).
+    // Bu yüzden doğrudan bu koordinatları kullanabiliriz.
+    // Ancak, setLineDash gibi özellikler DPR'den etkilenebilir.
+    // En temizi, bu fonksiyonun başında ctx.setTransform(dpr, 0, 0, dpr, 0, 0) yapmak ve
+    // sonra koordinatları buna göre ayarlamak ya da lineDash gibi değerleri dpr ile çarpmak.
+    // Mevcut yapıda, drawRadar'ın sonundaki ctx.restore() pan/zoom'u sıfırlar ama DPR ölçeklemesini korur.
+    // Bu yüzden doğrudan sSX, lCX kullanabiliriz.
+
+    ctx.beginPath();
+    ctx.moveTo(sSX, sSY);
+    ctx.lineTo(lCX, lCY);
+
+    ctx.strokeStyle = strC;
+    ctx.lineWidth = lineWidth; // Kalınlık önceki güncellemeden
+    // Noktalı çizgi stilini DPR'ye göre ayarlamak iyi bir pratiktir.
+    ctx.setLineDash([2 * dpr, 2 * dpr]);
+    ctx.stroke();
+    ctx.setLineDash([]); // Çizgi stilini sıfırla
+    ctx.restore(); // Eğer bu fonksiyon kendi save/restore'unu yönetiyorsa
 }
+
 function drawPlacementMarker(loc) {
     if (!loc) return; ctx.save(); const mS = 8 / zoom; ctx.strokeStyle = 'red'; ctx.lineWidth = 2 / zoom;
     ctx.beginPath(); ctx.moveTo(loc.x - mS, loc.y); ctx.lineTo(loc.x + mS, loc.y);
     ctx.moveTo(loc.x, loc.y - mS); ctx.lineTo(loc.x, loc.y + mS); ctx.stroke(); ctx.restore();
 }
 function drawMeasurementHighlight(ac) {
-    if (!ac) return;
-    ctx.save();
-    ctx.strokeStyle = 'cyan';
-    ctx.lineWidth = 2 / zoom;
-    const size = 8 / zoom;
-    ctx.strokeRect(ac.x - size / 2, ac.y - size / 2, size, size);
-    ctx.restore();
+    if (!ac) return; ctx.save(); ctx.strokeStyle = 'cyan'; ctx.lineWidth = 2 / zoom;
+    const size = 8 / zoom; ctx.strokeRect(ac.x - size / 2, ac.y - size / 2, size, size); ctx.restore();
 }
+
 function drawTemporaryMeasurementLine() {
     if (!measurementStartPoint) return;
     const worldMousePos = screenToWorld(lastMouseX, lastMouseY);
     let startX = measurementStartPoint.x; let startY = measurementStartPoint.y;
     if (measurementStartPoint.type === 'aircraft') {
         const ac = aircrafts.find(a => a.id === measurementStartPoint.id);
-        if (ac) { startX = ac.x; startY = ac.y; }
-        else { return; }
+        if (ac) { startX = ac.x; startY = ac.y; } else { return; }
     }
     ctx.save(); ctx.beginPath(); ctx.moveTo(startX, startY); ctx.lineTo(worldMousePos.x, worldMousePos.y);
-    ctx.strokeStyle = 'cyan'; ctx.lineWidth = 1.5 / zoom; ctx.setLineDash([4 / zoom, 4 / zoom]);
-    ctx.stroke(); ctx.setLineDash([]); ctx.restore();
-    ctx.save(); ctx.fillStyle = 'cyan'; ctx.beginPath(); ctx.arc(startX, startY, 3 / zoom, 0, 2 * Math.PI); ctx.fill(); ctx.restore();
+    ctx.strokeStyle = 'cyan';
+    ctx.lineWidth = (1.5 * 1.5) / zoom; // Kalınlığı 1.5x artırıldı (2.25)
+    ctx.setLineDash([4 / zoom, 4 / zoom]); ctx.stroke(); ctx.setLineDash([]); ctx.restore();
+
+    const pointRadius = (3 / zoom) * 1.5; // Nokta yarıçapını da artır
+    ctx.save(); ctx.fillStyle = 'cyan'; ctx.beginPath();
+    ctx.arc(startX, startY, pointRadius, 0, 2 * Math.PI); ctx.fill(); ctx.restore();
 }
+
 function drawMeasurementLine(measurement) {
-    ctx.save();
-    ctx.beginPath();
+    ctx.save(); ctx.beginPath();
     ctx.moveTo(measurement.start.x, measurement.start.y);
     ctx.lineTo(measurement.end.x, measurement.end.y);
     ctx.strokeStyle = 'cyan';
-    ctx.lineWidth = 1.5 / zoom;
-    ctx.stroke();
-    ctx.restore();
+    ctx.lineWidth = (1.5 * 1.5) / zoom; // Kalınlığı 1.5x artırıldı (2.25)
+    ctx.stroke(); ctx.restore();
 
-    ctx.save();
-    ctx.fillStyle = 'cyan';
-    ctx.beginPath();
-    ctx.arc(measurement.start.x, measurement.start.y, 2 / zoom, 0, 2 * Math.PI);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(measurement.end.x, measurement.end.y, 2 / zoom, 0, 2 * Math.PI);
-    ctx.fill();
+    const pointRadius = (2 / zoom) * 1.5; // Nokta yarıçapını da artır
+    ctx.save(); ctx.fillStyle = 'cyan';
+    ctx.beginPath(); ctx.arc(measurement.start.x, measurement.start.y, pointRadius, 0, 2 * Math.PI); ctx.fill();
+    ctx.beginPath(); ctx.arc(measurement.end.x, measurement.end.y, pointRadius, 0, 2 * Math.PI); ctx.fill();
     ctx.restore();
 }
-
 
 // --- Uçak Güncelleme Mantığı ---
 function updateAircrafts(deltaTime) {
     const effectiveDeltaTime = deltaTime * gameSpeedMultiplier;
-    const aircraftsToRemove = []; // Silinecek uçakların indekslerini tutar
-    const airmissPairs = []; // AIRMISS durumundaki uçak çiftlerini tutar
+    const aircraftsToRemove = [];
+    const airmissPairs = [];
 
-    // 1. AIRMISS Koşullarını Kontrol Et
     for (let i = 0; i < aircrafts.length; i++) {
         for (let j = i + 1; j < aircrafts.length; j++) {
-            const ac1 = aircrafts[i];
-            const ac2 = aircrafts[j];
-
-            const dx = ac2.x - ac1.x;
-            const dy = ac2.y - ac1.y;
+            const ac1 = aircrafts[i]; const ac2 = aircrafts[j];
+            const dx = ac2.x - ac1.x; const dy = ac2.y - ac1.y;
             const distanceWorldPixels = Math.sqrt(dx * dx + dy * dy);
             const distanceNM = worldPixelsToNm(distanceWorldPixels);
             const verticalSeparation = Math.abs(ac2.altitude - ac1.altitude);
-
-            if (distanceNM < 5 && verticalSeparation < 1000) { // Standart AIRMISS kriterleri
+            if (distanceNM < 5 && verticalSeparation < 1000) {
                 if (!airmissPairs.some(pair => (pair[0] === ac1 && pair[1] === ac2) || (pair[0] === ac2 && pair[1] === ac1))) {
                     airmissPairs.push([ac1, ac2]);
                 }
             }
         }
     }
-    updateAirmissAlert(airmissPairs); // AIRMISS uyarısını güncelle
+    updateAirmissAlert(airmissPairs);
 
-    // 2. Her Bir Uçağı Güncelle
     aircrafts.forEach((ac, index) => {
-        // a. Kuleye devredilmiş ve piste çok yakın uçakları sil (iniş tamamlandı varsayımı)
         if (ac.isHandedOffToTower) {
             const distToRunwayCenterWorldPixels = Math.sqrt((ac.x - centerX) ** 2 + (ac.y - centerY) ** 2);
-            if (distToRunwayCenterWorldPixels < (RUNWAY_THRESHOLD_DIST_PX / zoom)) { // RUNWAY_THRESHOLD_DIST_PX tanımlı olmalı
-                if (!aircraftsToRemove.includes(index)) {
-                    aircraftsToRemove.push(index);
-                }
-                // console.log(`Uçak ${ac.id} piste indi ve silindi.`);
-                return; // Bu uçağın daha fazla işlenmesine gerek yok
+            if (distToRunwayCenterWorldPixels < (RUNWAY_THRESHOLD_DIST_PX / zoom)) {
+                if (!aircraftsToRemove.includes(index)) aircraftsToRemove.push(index);
+                return;
             }
         }
-
-        // b. Merkezden 55 NM'den fazla uzaklaşan uçakları sil
         const distFromCenterWorldPixels = Math.sqrt((ac.x - centerX) ** 2 + (ac.y - centerY) ** 2);
         const distFromCenterNM = worldPixelsToNm(distFromCenterWorldPixels);
-
         if (distFromCenterNM > 55) {
-            if (!aircraftsToRemove.includes(index)) {
-                aircraftsToRemove.push(index);
-            }
-            // console.log(`Uçak ${ac.id}, merkezden ${distFromCenterNM.toFixed(1)} NM uzaklaştığı için silindi.`);
-            return; // Bu uçağın daha fazla işlenmesine gerek yok
+            if (!aircraftsToRemove.includes(index)) aircraftsToRemove.push(index);
+            return;
         }
 
-        // c. İrtifa Değişikliği
         if (ac.altitude !== ac.targetAltitude) {
             const altDiff = ac.targetAltitude - ac.altitude;
-            const direction = Math.sign(altDiff);
-            let rate = 0;
-
-            if (direction > 0 && ac.rateOfClimb > 0) {
-                rate = ac.rateOfClimb;
-            } else if (direction < 0 && ac.rateOfDescent > 0) {
-                rate = -ac.rateOfDescent;
-            } else if (direction !== 0) {
+            const direction = Math.sign(altDiff); let rate = 0;
+            if (direction > 0 && ac.rateOfClimb > 0) rate = ac.rateOfClimb;
+            else if (direction < 0 && ac.rateOfDescent > 0) rate = -ac.rateOfDescent;
+            else if (direction !== 0) {
                 rate = direction * (direction > 0 ? (aircraftPerformanceROC[ac.type] || DEFAULT_CLIMB_RATE) : DEFAULT_ROD);
                 if (direction > 0) ac.rateOfClimb = Math.abs(rate); else ac.rateOfDescent = Math.abs(rate);
             }
-
             if (rate !== 0) {
                 const changeAmount = rate * (effectiveDeltaTime / 60);
                 if (Math.abs(changeAmount) >= Math.abs(altDiff)) {
-                    ac.altitude = ac.targetAltitude;
-                    ac.rateOfClimb = 0;
-                    ac.rateOfDescent = 0;
-                } else {
-                    ac.altitude += changeAmount;
-                }
+                    ac.altitude = ac.targetAltitude; ac.rateOfClimb = 0; ac.rateOfDescent = 0;
+                } else { ac.altitude += changeAmount; }
             }
         }
 
-        // d. Kalkış Mantığı (isTakingOff)
         if (ac.isTakingOff) {
             const distFromTakeoffPointNM = worldPixelsToNm(Math.sqrt((ac.x - centerX) ** 2 + (ac.y - centerY) ** 2));
-            if (distFromTakeoffPointNM > 12 || ac.altitude > 7000) { // 12 NM veya FL070
+            if (distFromTakeoffPointNM > 12 || ac.altitude > 7000) {
                 ac.isTakingOff = false;
                 if (ac.targetWaypoint) {
                     const wp = waypoints.find(w => w.name === ac.targetWaypoint);
@@ -1258,108 +1263,99 @@ function updateAircrafts(deltaTime) {
                         const wpX = centerX + Math.sin(wpAngleRad) * nmToWorldPixels(wp.distanceNM);
                         const wpY = centerY - Math.cos(wpAngleRad) * nmToWorldPixels(wp.distanceNM);
                         ac.targetHeading = Math.round(calculateBearing(ac.x, ac.y, wpX, wpY));
-                        ac.turning = true;
-                        ac.commandedTurnDirection = 0; // Otomatik dönüş waypoint'e
-                        // console.log(`${ac.id} kalkış sonrası ${ac.targetWaypoint} waypointine yöneliyor (${ac.targetHeading}°).`);
+                        ac.turning = true; ac.commandedTurnDirection = 0;
                     }
                 }
             }
             if (ac.speedKTS < (defaultAircraftSpeeds[ac.type] || 250) - 20) {
-                 ac.speedKTS += 1.5 * effectiveDeltaTime; // Hızlanma (biraz artırıldı)
-                 if (ac.speedKTS > (defaultAircraftSpeeds[ac.type] || 250) - 20) {
-                    ac.speedKTS = (defaultAircraftSpeeds[ac.type] || 250) - 20; // Limiti aşmasın
-                 }
+                ac.speedKTS += 1.5 * effectiveDeltaTime;
+                if (ac.speedKTS > (defaultAircraftSpeeds[ac.type] || 250) - 20) {
+                    ac.speedKTS = (defaultAircraftSpeeds[ac.type] || 250) - 20;
+                }
             }
         }
 
-        // e. Intercept Mantığı (isIntercepting)
         if (ac.isIntercepting) {
-            let targetCourse = (ac.interceptCourse === INTERCEPT_TARGET_COURSE_21L) ? INTERCEPT_TARGET_COURSE_21L : INTERCEPT_TARGET_COURSE_033; // Hangi LOC'a intercept ettiği saklanmalı
-            if (!ac.interceptCourse) ac.interceptCourse = ac.targetHeading; // Eğer atanmamışsa, hedef baştan al (ilk intercept butonu tıklaması)
+            let targetCourse = (ac.interceptCourse === INTERCEPT_TARGET_COURSE_21L) ? INTERCEPT_TARGET_COURSE_21L : INTERCEPT_TARGET_COURSE_033;
+            if (!ac.interceptCourse) ac.interceptCourse = ac.targetHeading;
             targetCourse = ac.interceptCourse;
-
-
             const locRad = toRadians(targetCourse);
             const lineEndX = centerX + Math.sin(locRad) * nmToWorldPixels(localizerLengthNM * 2);
             const lineEndY = centerY - Math.cos(locRad) * nmToWorldPixels(localizerLengthNM * 2);
             const distToLocNM = worldPixelsToNm(pointLineDistance(ac.x, ac.y, centerX, centerY, lineEndX, lineEndY));
-
             if (distToLocNM < ON_LOCALIZER_THRESHOLD_NM) {
-                ac.heading = targetCourse;
-                ac.targetHeading = targetCourse;
-                ac.turning = false;
-                ac.isIntercepting = false;
-                ac.commandedTurnDirection = 0;
-                ac.bankAngle = 0;
-                ac.interceptCourse = null; // Intercept tamamlandı
-                // console.log(`${ac.id} localizer'ı (${targetCourse}°) yakaladı.`);
-            } else {
-                // Intercept sırasında hedef baş, localizer'ı yakalayacak bir açı olmalı.
-                // Bu genellikle intercept komutu verildiğinde hesaplanır ve ac.targetHeading'e atanır.
-                // Eğer ac.targetHeading zaten intercept açısı ise, ona doğru dönmeye devam eder.
-                if (!ac.turning) ac.turning = true; // Dönmüyorsa dönüşü başlat
-            }
+                ac.heading = targetCourse; ac.targetHeading = targetCourse;
+                ac.turning = false; ac.isIntercepting = false; ac.commandedTurnDirection = 0;
+                ac.bankAngle = 0; ac.interceptCourse = null;
+            } else { if (!ac.turning) ac.turning = true; }
         }
 
         // f. Dönüş Mantığı (turning) - GÜNCELLENMİŞ
         if (ac.turning && !ac.isIntercepting) {
-            const turnSpeedDegreesPerSecond = 3.0;
-            const diffToTarget = angleDiff(ac.targetHeading, ac.heading);
+            const turnRateDegreesPerFrameUpdate = 3.0; // Her güncelleme adımında 3 derece.
+            const updateIntervalSeconds = 1.0 / gameSpeedMultiplier; // Oyun hızına göre 1 saniyelik interval
+            const updateIntervalMs = updateIntervalSeconds * 1000;
 
-            const arrivalThreshold = (turnSpeedDegreesPerSecond * effectiveDeltaTime) + 0.5; // Hedefe varış için tolerans
+            if (ac.lastHeadingUpdateTime === undefined || ac.lastHeadingUpdateTime === 0) {
+                ac.lastHeadingUpdateTime = performance.now();
+            }
+            const currentTimeMs = performance.now();
 
-            if (Math.abs(diffToTarget) < arrivalThreshold) {
-                ac.heading = ac.targetHeading;
-                ac.turning = false; // Dönüşü durdur
-                ac.bankAngle = 0;
-                ac.commandedTurnDirection = 0; // Manuel L/R komutunu temizle
-                // console.log(`${ac.id} hedef başa (${ac.targetHeading}°) ulaştı. Dönüş durdu.`);
-            } else {
-                let turnDirectionForStep = ac.commandedTurnDirection; // Manuel L/R komutunu önceliklendir
+            if (currentTimeMs - ac.lastHeadingUpdateTime >= updateIntervalMs) {
+                ac.lastHeadingUpdateTime = currentTimeMs;
+                const diffToTarget = angleDiff(ac.targetHeading, ac.heading);
+                const arrivalThreshold = turnRateDegreesPerFrameUpdate + 0.5;
 
-                if (turnDirectionForStep === 0) { // Otomatik dönüş (L/R komutu yoksa)
-                    turnDirectionForStep = Math.sign(diffToTarget); // Hedefe doğru en kısa yön
-                }
-
-                const turnAmount = turnDirectionForStep * turnSpeedDegreesPerSecond * effectiveDeltaTime;
-                ac.heading = (ac.heading + turnAmount + 360) % 360;
-
-                if (ac.turning) { // Hâlâ dönmesi gerekiyorsa bank uygula
-                    let requiredBank = Math.min(ac.maxBankAngle, (ac.speedKTS / 10) + 7);
-                    const targetBank = turnDirectionForStep * requiredBank;
-                    ac.bankAngle += (targetBank - ac.bankAngle) * 0.1; // Bank açısını yumuşakça ayarla
-                     if (Math.abs(ac.bankAngle - targetBank) < 0.5) ac.bankAngle = targetBank;
+                if (Math.abs(diffToTarget) < arrivalThreshold) {
+                    ac.heading = ac.targetHeading;
+                    ac.turning = false;
+                    // ac.bankAngle = 0; // Bank açısı yumuşakça sıfırlanacak
+                    ac.commandedTurnDirection = 0;
+                } else {
+                    let turnDirectionForStep = ac.commandedTurnDirection;
+                    if (turnDirectionForStep === 0) {
+                        turnDirectionForStep = Math.sign(diffToTarget);
+                    }
+                    const turnAmount = turnDirectionForStep * turnRateDegreesPerFrameUpdate;
+                    ac.heading = (ac.heading + turnAmount + 360) % 360;
                 }
             }
+            // Bank açısını yumuşakça hedef bank açısına getirme (her frame'de çalışabilir)
+            if (ac.turning) {
+                let turnDirectionForBank = ac.commandedTurnDirection;
+                 if (turnDirectionForBank === 0) {
+                    const diffToTargetForBank = angleDiff(ac.targetHeading, ac.heading);
+                    if (Math.abs(diffToTargetForBank) > 0.5) {
+                        turnDirectionForBank = Math.sign(diffToTargetForBank);
+                    } else { turnDirectionForBank = 0; }
+                }
+                let requiredBank = Math.min(ac.maxBankAngle, (ac.speedKTS / 10) + 7);
+                const targetBankAngle = turnDirectionForBank * requiredBank;
+                ac.bankAngle += (targetBankAngle - ac.bankAngle) * (effectiveDeltaTime * 5); // 5 yumuşatma faktörü
+                if (Math.abs(ac.bankAngle - targetBankAngle) < 0.5) ac.bankAngle = targetBankAngle;
+            }
+
         } else if (!ac.isIntercepting) { // Dönmüyor ve intercept etmiyorsa
-            ac.bankAngle *= 0.92; // Bank açısını daha yavaş sıfırla (0.95 idi)
-            if (Math.abs(ac.bankAngle) < 0.05) { // Daha küçük bir eşik
-                ac.bankAngle = 0;
-            }
+            ac.bankAngle += (0 - ac.bankAngle) * (effectiveDeltaTime * 5); // Bank açısını yumuşakça sıfırla
+            if (Math.abs(ac.bankAngle) < 0.1) ac.bankAngle = 0;
         }
 
-        // g. Uçağın Pozisyonunu Güncelle
         const speedNMPerSecond = ac.speedKTS / 3600;
         const distanceNM = speedNMPerSecond * effectiveDeltaTime;
         const worldDistancePixels = nmToWorldPixels(distanceNM);
         const rad = toRadians(ac.heading);
-
         ac.x += Math.sin(rad) * worldDistancePixels;
         ac.y -= Math.cos(rad) * worldDistancePixels;
     });
 
-    // 3. Silinecek Uçakları Temizle
     if (aircraftsToRemove.length > 0) {
         for (let i = aircraftsToRemove.length - 1; i >= 0; i--) {
             const indexToRemove = aircraftsToRemove[i];
             const removedAircraft = aircrafts[indexToRemove];
             if (removedAircraft) {
-                if (removedAircraft.labelElement) {
-                    removedAircraft.labelElement.remove();
-                }
+                if (removedAircraft.labelElement) removedAircraft.labelElement.remove();
                 if (selectedAircraft && selectedAircraft.id === removedAircraft.id) {
-                    selectedAircraft = null;
-                    if(popup) popup.style.display = 'none';
+                    selectedAircraft = null; if(popup) popup.style.display = 'none';
                 }
                 aircrafts.splice(indexToRemove, 1);
             }
@@ -1368,101 +1364,57 @@ function updateAircrafts(deltaTime) {
     }
 }
 
-
 function updateAirmissAlert(airmissPairs) {
     const airmissAlert = document.getElementById('airmissAlert');
     const airmissCallsigns = document.getElementById('airmissCallsigns');
-
     if (airmissPairs.length > 0) {
-        // Display the alert with the first pair of conflicting aircraft
-        const [ac1, ac2] = airmissPairs[0]; // Show only the first conflict for simplicity
+        const [ac1, ac2] = airmissPairs[0];
         airmissCallsigns.textContent = `${ac1.id} - ${ac2.id}`;
         airmissAlert.style.display = 'block';
     } else {
-        // Hide the alert if no conflicts
         airmissAlert.style.display = 'none';
         airmissCallsigns.textContent = '';
     }
 }
 
-// ESKİ generateScenario fonksiyonunu bulun ve aşağıdaki gibi güncelleyin.
-// function generateScenario() { ... } şeklindeki mevcut fonksiyonunuzu,
-// aşağıdaki iki yeni fonksiyonla değiştireceğiz.
-
 function showRunwaySelection() {
-    if (runwaySelectionModal) {
-        runwaySelectionModal.style.display = 'flex'; // Modal'ı görünür yap
-    }
+    if (runwaySelectionModal) runwaySelectionModal.style.display = 'flex';
 }
-
 function hideRunwaySelection() {
-    if (runwaySelectionModal) {
-        runwaySelectionModal.style.display = 'none'; // Modal'ı gizle
-    }
+    if (runwaySelectionModal) runwaySelectionModal.style.display = 'none';
 }
 
 function initializeScenarioGeneration(activeRunway) {
-    hideRunwaySelection(); // Seçim yapıldıktan sonra modalı gizle
-
-    // 0. ÖNCEKİ ZAMANLAYICILARI TEMİZLE
+    hideRunwaySelection();
     if (activeScenarioTimeouts && activeScenarioTimeouts.length > 0) {
         activeScenarioTimeouts.forEach(timeoutId => clearTimeout(timeoutId));
     }
     activeScenarioTimeouts = [];
-
-    // console.log(`Aktif pist seçildi: ${activeRunway}`);
-
-    // Mevcut uçakları ve etiketlerini temizle
-    aircrafts.forEach(ac => {
-        if (ac.labelElement) ac.labelElement.remove();
-    });
-    aircrafts.length = 0;
-    selectedAircraft = null;
-    updateTopCenterButtonStates(); // Buton durumlarını güncelle
-    if (popup) popup.style.display = 'none'; // Açık popup varsa kapat
+    aircrafts.forEach(ac => { if (ac.labelElement) ac.labelElement.remove(); });
+    aircrafts.length = 0; selectedAircraft = null;
+    updateTopCenterButtonStates(); if (popup) popup.style.display = 'none';
     scenarioAircraftIdCounter = 0;
-
-    // Oyun duraklatılmışsa devam ettir
     if (isPaused) {
-        isPaused = false;
-        playPauseButton.textContent = 'Durdur';
-        playPauseButton.classList.remove('paused');
-        toggleTimer(false); // toggleTimer'a false parametresiyle çağırarak devam ettir
-        lastTime = performance.now(); // lastTime'ı güncelle
-        if (!animationFrameId) { // Eğer gameLoop durmuşsa yeniden başlat
-            gameLoop(lastTime);
-        }
+        isPaused = false; playPauseButton.textContent = 'Durdur';
+        playPauseButton.classList.remove('paused'); toggleTimer(false);
+        lastTime = performance.now();
+        if (!animationFrameId) gameLoop(lastTime);
     }
-
     const localizerCourse = activeRunway === '03R' ? INTERCEPT_TARGET_COURSE_033 : INTERCEPT_TARGET_COURSE_21L;
-    let targetPointAngleDeg;
-    if (activeRunway === '03R') {
-        targetPointAngleDeg = (localizerCourse + 180) % 360;
-    } else { // 21L
-        targetPointAngleDeg = (localizerCourse + 180) % 360;
-    }
+    let targetPointAngleDeg = (localizerCourse + 180) % 360;
     const targetPointAngleRad = toRadians(targetPointAngleDeg);
-    const targetPointDistanceNM = 12; // Final Approach Fix (FAF) gibi bir nokta varsayalım
+    const targetPointDistanceNM = 12;
     const targetPointX = centerX + Math.sin(targetPointAngleRad) * nmToWorldPixels(targetPointDistanceNM);
     const targetPointY = centerY - Math.cos(targetPointAngleRad) * nmToWorldPixels(targetPointDistanceNM);
 
-    // --- İniş Trafiği (1. Dakika içinde 5 uçak) ---
-    const numArrivals = 5;
-    const arrivalSpawnWindowSeconds = 60; // Uçakların 0-60 saniye içinde rastgele gelmesi
-
+    const numArrivals = 5; const arrivalSpawnWindowSeconds = 60;
     let availableWaypointsForScenario = [...waypoints].sort(() => 0.5 - Math.random());
-    const baseWaypoints = [...waypoints]; // Waypoint yetersizliği durumunda kullanılmak üzere orijinal liste
-
+    const baseWaypoints = [...waypoints];
     if (availableWaypointsForScenario.length < 4 && baseWaypoints.length > 0) {
-        console.warn("İniş senaryosu için yeterli sayıda farklı waypoint yok. Mevcut waypointler tekrar kullanılacak.");
-        // Yeterli waypoint yoksa, mevcutları tekrar kullanarak listeyi doldurmaya çalış
         while(availableWaypointsForScenario.length < 4 && baseWaypoints.length > 0) {
             availableWaypointsForScenario.push(baseWaypoints[Math.floor(Math.random() * baseWaypoints.length)]);
         }
-    } else if (baseWaypoints.length === 0) {
-         console.error("Hiç waypoint tanımlı değil. İniş trafiği waypointler üzerinden üretilemiyor.");
-         // Bu durumda iniş trafiği üretimi atlanabilir veya farklı bir mantık izlenebilir.
-    }
+    } else if (baseWaypoints.length === 0) { console.error("Hiç waypoint tanımlı değil."); }
 
     let arrivalWaypointsSelection = [];
     if (availableWaypointsForScenario.length >= 4) {
@@ -1476,117 +1428,86 @@ function initializeScenarioGeneration(activeRunway) {
             arrivalWaypointsSelection.push(availableWaypointsForScenario[k % availableWaypointsForScenario.length]);
         }
     }
-    // Waypoint yoksa arrivalWaypointsSelection boş kalacak ve aşağıdaki döngü çalışmayacak.
-
-    arrivalWaypointsSelection.sort(() => 0.5 - Math.random()); // Son bir kez karıştır
-    let firstFLForWaypoint = {}; // Waypoint adına göre ilk atanan FL'i saklamak için
+    arrivalWaypointsSelection.sort(() => 0.5 - Math.random());
+    let firstFLForWaypoint = {};
 
     for (let i = 0; i < numArrivals; i++) {
-        if (arrivalWaypointsSelection.length === 0) break; 
-
+        if (arrivalWaypointsSelection.length === 0) break;
         const spawnTimeSeconds = Math.random() * arrivalSpawnWindowSeconds;
-        const waypoint = arrivalWaypointsSelection[i % arrivalWaypointsSelection.length]; 
+        const waypoint = arrivalWaypointsSelection[i % arrivalWaypointsSelection.length];
         const wpAngleRad = toRadians(waypoint.angle);
         const spawnX = centerX + Math.sin(wpAngleRad) * nmToWorldPixels(waypoint.distanceNM);
         const spawnY = centerY - Math.cos(wpAngleRad) * nmToWorldPixels(waypoint.distanceNM);
         const bearingToTargetPoint = calculateBearing(spawnX, spawnY, targetPointX, targetPointY);
-
-        let baseFL = Math.floor(Math.random() * (22 - 13 + 1)) + 13; // FL130-FL220
+        let baseFL = Math.floor(Math.random() * (22 - 13 + 1)) + 13;
         let altitudeFL = baseFL * 10;
-
         const waypointKey = waypoint.name;
         if (firstFLForWaypoint[waypointKey] === undefined) {
             firstFLForWaypoint[waypointKey] = altitudeFL;
         } else {
-            // Aynı waypoint'ten gelen ikinci (veya daha fazla) uçak için farklı FL ata
-            let attempts = 0;
-            const originalFL = firstFLForWaypoint[waypointKey];
-            while (altitudeFL === originalFL && attempts < 20) { // Çok fazla denemeden sonra çakışma kabul edilebilir
+            let attempts = 0; const originalFL = firstFLForWaypoint[waypointKey];
+            while (altitudeFL === originalFL && attempts < 20) {
                 baseFL = Math.floor(Math.random() * (22 - 13 + 1)) + 13;
-                altitudeFL = baseFL * 10;
-                attempts++;
+                altitudeFL = baseFL * 10; attempts++;
             }
-            if (altitudeFL === originalFL) {
-                console.warn(`Waypoint ${waypointKey} için ${originalFL} dışında farklı bir FL atanamadı. ${altitudeFL} kullanılıyor.`);
-            }
-            // Bu mantık, aynı anda gelen çok sayıda uçak için ideal olmayabilir,
-            // ama basit bir senaryo için genellikle yeterlidir.
-            // Daha gelişmiş bir sistem, o an o waypoint'e atanan tüm FL'leri takip etmelidir.
         }
-
         const altitudeFeet = altitudeFL * 100;
         const acType = aircraftTypes[Math.floor(Math.random() * aircraftTypes.length)];
         scenarioAircraftIdCounter++;
         const callsign = (callsignPrefixes[Math.floor(Math.random() * callsignPrefixes.length)]) + (100 + scenarioAircraftIdCounter);
-
         const timeoutIdArrival = setTimeout(() => {
             const aircraft = {
                 id: callsign, x: spawnX, y: spawnY,
                 heading: Math.round(bearingToTargetPoint), targetHeading: Math.round(bearingToTargetPoint),
                 speedKTS: defaultAircraftSpeeds[acType] || 230,
-                altitude: altitudeFeet, targetAltitude: altitudeFeet, // Başlangıçta mevcut irtifada
+                altitude: altitudeFeet, targetAltitude: altitudeFeet,
                 rateOfDescent: 0, rateOfClimb: 0, isTakingOff: false, takeoffRunway: null,
                 isIntercepting: false, isHandedOffToTower: false, showVector: false,
                 labelElement: null, labelX: 0, labelY: 0, labelDragged: true, bankAngle: 0, maxBankAngle: 25,
                 commandedTurnDirection: 0, turning: false, type: acType, departureTargetFL: null,
-                showInfoPanel: false, draggedLabelDeltaX: 0, draggedLabelDeltaY: 0, initialPosSet: true,
-                targetWaypoint: null // Gelen uçaklar direkt FAF benzeri bir noktaya yöneliyor, STAR waypoint'i yok
+                showInfoPanel: false, draggedLabelDeltaX: 0, draggedLabelDeltaY: 0,
+                lastHeadingUpdateTime: 0, initialPosSet: true, targetWaypoint: null
             };
             aircrafts.push(aircraft);
-        }, spawnTimeSeconds * 1000 / gameSpeedMultiplier); // Oyun hızına göre zamanlama
+        }, spawnTimeSeconds * 1000 / gameSpeedMultiplier);
         activeScenarioTimeouts.push(timeoutIdArrival);
     }
 
-    // --- Kalkış Trafiği ---
-    const departureSpawnTimes = [
-        Math.random() * 60,          // İlk uçak: 0-60 saniye arası
-        120 + (Math.random() * 60)   // İkinci uçak: 120-180 saniye arası (3. dakika içinde)
-    ];
+    const departureSpawnTimes = [Math.random() * 60, 140 + (Math.random() * 60)];
     let waypointsForDeparture = [...waypoints].sort(() => 0.5 - Math.random());
     if (waypointsForDeparture.length === 0 && baseWaypoints.length > 0) {
-         waypointsForDeparture.push(baseWaypoints[Math.floor(Math.random() * baseWaypoints.length)]);
+        waypointsForDeparture.push(baseWaypoints[Math.floor(Math.random() * baseWaypoints.length)]);
     }
-
     for (let i = 0; i < departureSpawnTimes.length; i++) {
         const takeoffTimeSeconds = departureSpawnTimes[i];
         const acType = aircraftTypes[Math.floor(Math.random() * aircraftTypes.length)];
         scenarioAircraftIdCounter++;
-        const callsign = (callsignPrefixes[Math.floor(Math.random() * callsignPrefixes.length)]) + (500 + scenarioAircraftIdCounter); // Farklı bir numara serisi
-        const departureTargetBaseFL = Math.floor(Math.random() * (28 - 18 + 1)) + 18; // FL180-FL280
+        const callsign = (callsignPrefixes[Math.floor(Math.random() * callsignPrefixes.length)]) + (500 + scenarioAircraftIdCounter);
+        const departureTargetBaseFL = Math.floor(Math.random() * (28 - 18 + 1)) + 18;
         const departureTargetFL = departureTargetBaseFL * 10;
         const climbRate = aircraftPerformanceROC[acType] || DEFAULT_CLIMB_RATE;
-
         let takeoffTargetWaypointName = null;
         if (waypointsForDeparture.length > 0) {
             takeoffTargetWaypointName = waypointsForDeparture[i % waypointsForDeparture.length].name;
-        } else {
-            console.warn(`Kalkış yapan ${callsign} için hedef waypoint bulunamadı. Pist başında devam edecek.`);
         }
-
         const timeoutIdDeparture = setTimeout(() => {
             const aircraft = {
-                id: callsign, x: centerX, y: centerY, // Pist başından kalkış
-                heading: localizerCourse, targetHeading: localizerCourse, // Pist başıyla başla
-                speedKTS: 160, // Kalkış sonrası başlangıç hızı
-                altitude: 0, targetAltitude: departureTargetFL * 100,
+                id: callsign, x: centerX, y: centerY,
+                heading: localizerCourse, targetHeading: localizerCourse,
+                speedKTS: 160, altitude: 0, targetAltitude: departureTargetFL * 100,
                 rateOfClimb: climbRate, rateOfDescent: 0, isTakingOff: true, takeoffRunway: activeRunway,
                 isIntercepting: false, isHandedOffToTower: false, showVector: false,
                 labelElement: null, labelX: 0, labelY: 0, labelDragged: true, bankAngle: 0, maxBankAngle: 25,
                 commandedTurnDirection: 0, turning: false, type: acType, departureTargetFL: departureTargetFL,
-                showInfoPanel: false, draggedLabelDeltaX: 0, draggedLabelDeltaY: 0, initialPosSet: true,
-                targetWaypoint: takeoffTargetWaypointName
+                showInfoPanel: false, draggedLabelDeltaX: 0, draggedLabelDeltaY: 0,
+                lastHeadingUpdateTime: 0, initialPosSet: true, targetWaypoint: takeoffTargetWaypointName
             };
             aircrafts.push(aircraft);
-        }, takeoffTimeSeconds * 1000 / gameSpeedMultiplier); // Oyun hızına göre zamanlama
+        }, takeoffTimeSeconds * 1000 / gameSpeedMultiplier);
         activeScenarioTimeouts.push(timeoutIdDeparture);
     }
-    // console.log(`Senaryo üretimi tamamlandı: Pist ${activeRunway}. Zamanlayıcılar kuruldu.`);
 }
 
-
-
-
-// --- Ölçüm Verilerini Güncelle ---
 function updateMeasurementData() {
     measurements.forEach(m => {
         let needsCoordUpdate = false; let needsAltUpdate = false;
@@ -1602,18 +1523,10 @@ function updateMeasurementData() {
         }
         if (m.start.type === 'runwayCenter' && m.end.type === 'aircraft') {
             const endAc = aircrafts.find(a => a.id === m.end.id);
-            if (!endAc) {
-                if(m.labelElement) m.labelElement.remove();
-                measurements = measurements.filter(meas => meas.id !== m.id);
-                return;
-            }
+            if (!endAc) { if(m.labelElement) m.labelElement.remove(); measurements = measurements.filter(meas => meas.id !== m.id); return; }
         } else if (m.start.type === 'aircraft' && m.end.type === 'runwayCenter') {
-             const startAc = aircrafts.find(a => a.id === m.start.id);
-            if (!startAc) {
-                if(m.labelElement) m.labelElement.remove();
-                measurements = measurements.filter(meas => meas.id !== m.id);
-                return;
-            }
+            const startAc = aircrafts.find(a => a.id === m.start.id);
+            if (!startAc) { if(m.labelElement) m.labelElement.remove(); measurements = measurements.filter(meas => meas.id !== m.id); return; }
         }
 
         const dx = m.end.x - m.start.x; const dy = m.end.y - m.start.y;
@@ -1639,14 +1552,10 @@ function updateMeasurementData() {
                     if (endAircraft) { newRelativeBearing1 = angleDiff(newBearing, startAircraft.heading); newRelativeBearing2 = angleDiff(newReciprocalBearing, endAircraft.heading); }
                 }
             }
-        }
-        else if (m.start.type === 'runwayCenter' && m.end.type === 'aircraft') {
+        } else if (m.start.type === 'runwayCenter' && m.end.type === 'aircraft') {
             const endAircraft = aircrafts.find(a => a.id === m.end.id);
-            if(endAircraft){
-                 newRelativeBearing2 = angleDiff(newReciprocalBearing, endAircraft.heading);
-            }
+            if(endAircraft){ newRelativeBearing2 = angleDiff(newReciprocalBearing, endAircraft.heading); }
         }
-
 
         if (m.distanceNM !== newDistanceNM || m.estimatedAltitude !== newEstimatedAltitude || m.bearing !== newBearing || m.relativeBearing1 !== newRelativeBearing1 || m.relativeBearing2 !== newRelativeBearing2) {
             m.distanceNM = newDistanceNM; m.estimatedAltitude = newEstimatedAltitude; m.bearing = newBearing; m.reciprocalBearing = newReciprocalBearing; m.relativeBearing1 = newRelativeBearing1; m.relativeBearing2 = newRelativeBearing2;
@@ -1665,17 +1574,13 @@ function updateMeasurementData() {
                 if (m.start.type === 'aircraft' && m.estimatedAltitude !== null && m.estimatedAltitude !== undefined) {
                     distAltText += ` / ~${formatFlightLevel(m.estimatedAltitude)} (to RWY)`;
                 } else if (m.start.type === 'runwayCenter' && m.end.type === 'aircraft') {
-                     const acEnd = aircrafts.find(a => a.id === m.end.id);
-                     if (acEnd) {
+                    const acEnd = aircrafts.find(a => a.id === m.end.id);
+                    if (acEnd) {
                         distAltText += ` / ${formatFlightLevel(acEnd.altitude)}`;
-                        if(m.relativeBearing2 !== null) {
-                             extraInfo = `<span class="measurement-relative-bearing">AC to RWY: ${formatRelativeBearing(m.relativeBearing2)}</span>`;
-                        }
-                     }
+                        if(m.relativeBearing2 !== null) { extraInfo = `<span class="measurement-relative-bearing">AC to RWY: ${formatRelativeBearing(m.relativeBearing2)}</span>`; }
+                    }
                 }
-                distAltText += `</span>`;
-                labelContent = bearingText + extraInfo + distAltText;
-
+                distAltText += `</span>`; labelContent = bearingText + extraInfo + distAltText;
             } else {
                 const bearingText = `<span class="measurement-bearing">${formatBearing(m.bearing)} / ${formatBearing(m.reciprocalBearing)}</span>`;
                 let distAltText = `<span class="measurement-dist-alt">${m.distanceNM.toFixed(1)} NM`;
@@ -1687,7 +1592,6 @@ function updateMeasurementData() {
     });
 }
 
-// --- Etiket Yönetimi (DOM) ---
 function startLabelDrag(event, item, type) {
     if (event.button !== 1) return; event.preventDefault();
     isDraggingLabel = true; draggedLabelItem = item; draggedLabelType = type;
@@ -1699,17 +1603,15 @@ function startLabelDrag(event, item, type) {
 function updateAircraftLabelPositionDOM(ac) {
     const currentFL = formatFlightLevel(ac.altitude);
     const targetFL = formatFlightLevel(ac.targetAltitude);
-
     if (!ac.labelElement) {
         ac.labelElement = document.createElement('div');
         ac.labelElement.className = 'dynamic-label aircraft-label';
         ac.labelElement.dataset.aircraftId = ac.id;
         document.body.appendChild(ac.labelElement);
-        // HTML yapısı - hız satırındaki yorum tamamen kaldırıldı
         ac.labelElement.innerHTML = `
             <div class="label-line label-id">${ac.id}</div>
             <div class="aircraft-info-panel" style="display: none;">
-                <div>Tip: <span class="info-type"></span><span class="info-dep-waypoint" style="margin-left: 8px; color: #ffc107; font-weight: bold;"></span></div>
+                <div>Tip: <span class="info-type"></span><span class="info-dep-waypoint" style="margin-left: 8px; font-weight: bold;"></span></div>
                 <div class="info-target-fl-line" style="display: none;">Hedef FL: <span class="info-target-fl"></span></div>
             </div>
             <div class="label-line clickable-line" data-field="heading">${Math.round(ac.heading)}°</div>
@@ -1719,7 +1621,6 @@ function updateAircraftLabelPositionDOM(ac) {
                 <span class="target-altitude clickable-line" data-field="altitude">⇢${targetFL}</span>
                 <span class="clickable-line" data-field="rateOfDescent"> RoD ${ac.rateOfDescent > 0 ? ac.rateOfDescent : (ac.rateOfClimb > 0 ? `+${ac.rateOfClimb}` : '0')}</span>
             </div>`;
-
         ac.labelElement.addEventListener('click', (e) => {
             const clickableTarget = e.target.closest('.clickable-line[data-field], .label-id');
             if (!clickableTarget) return;
@@ -1731,7 +1632,7 @@ function updateAircraftLabelPositionDOM(ac) {
                 updateTopCenterButtonStates();
                 if (clickableTarget.classList.contains('label-id')) {
                     selectedAircraft.showInfoPanel = !selectedAircraft.showInfoPanel;
-                    updateAircraftLabelPositionDOM(selectedAircraft); // Etiketi yeniden çizdir/güncelle
+                    updateAircraftLabelPositionDOM(selectedAircraft);
                 } else {
                     const field = clickableTarget.dataset.field;
                     if (field) {
@@ -1743,42 +1644,30 @@ function updateAircraftLabelPositionDOM(ac) {
         });
         ac.labelElement.addEventListener('mousedown', (e) => { startLabelDrag(e, ac, 'aircraft'); });
     }
-
-    // Etiket içeriğini güncelleme kısmı
     ac.labelElement.querySelector('.label-id').textContent = ac.id;
     ac.labelElement.querySelector('[data-field="heading"]').textContent = `${Math.round(ac.heading)}°`;
-    ac.labelElement.querySelector('[data-field="speedKTS"]').textContent = `${Math.round(ac.speedKTS)}kts`; // Hız burada da yuvarlanıyor
+    ac.labelElement.querySelector('[data-field="speedKTS"]').textContent = `${Math.round(ac.speedKTS)}kts`;
     ac.labelElement.querySelector('.current-altitude').textContent = currentFL;
     ac.labelElement.querySelector('.target-altitude').textContent = `⇢${targetFL}`;
     ac.labelElement.querySelector('[data-field="rateOfDescent"]').textContent = ` RoD ${ac.rateOfDescent > 0 ? ac.rateOfDescent : (ac.rateOfClimb > 0 ? `+${ac.rateOfClimb}` : '0')}`;
-
     const infoPanel = ac.labelElement.querySelector('.aircraft-info-panel');
     const infoTypeSpan = infoPanel.querySelector('.info-type');
     const infoDepWaypointSpan = infoPanel.querySelector('.info-dep-waypoint');
     const infoTargetFLLine = infoPanel.querySelector('.info-target-fl-line');
     const infoTargetFLSpan = infoPanel.querySelector('.info-target-fl');
-
     if (ac.showInfoPanel) {
         infoPanel.style.display = 'block';
         infoTypeSpan.textContent = ac.type || 'N/A';
         if (ac.departureTargetFL && ac.targetWaypoint) {
             infoDepWaypointSpan.textContent = ac.targetWaypoint;
             infoDepWaypointSpan.style.display = 'inline';
-        } else {
-            infoDepWaypointSpan.textContent = '';
-            infoDepWaypointSpan.style.display = 'none';
-        }
+        } else { infoDepWaypointSpan.textContent = ''; infoDepWaypointSpan.style.display = 'none'; }
         if (ac.departureTargetFL) {
             infoTargetFLLine.style.display = 'block';
             infoTargetFLSpan.textContent = `FL${ac.departureTargetFL}`;
-        } else {
-            infoTargetFLLine.style.display = 'none';
-        }
-    } else {
-        infoPanel.style.display = 'none';
-    }
+        } else { infoTargetFLLine.style.display = 'none'; }
+    } else { infoPanel.style.display = 'none'; }
 
-    // Etiket pozisyonunu ve stilini güncelleme
     if (!(isDraggingLabel && draggedLabelItem === ac)) {
         const screenPos = worldToScreen(ac.x, ac.y);
         if (ac.labelDragged) {
@@ -1804,12 +1693,10 @@ function updateAircraftLabelPositionDOM(ac) {
     }
 }
 
-
 function createMeasurementLabel(measurement) {
     const label = document.createElement('div');
     label.className = 'dynamic-label measurement-label';
     label.dataset.measurementId = measurement.id;
-
     let labelContent = "";
     if (measurement.start.type === 'aircraft' && measurement.end.type === 'aircraft') {
         const relativeBearingText = `<span class="measurement-relative-bearing">${formatRelativeBearing(measurement.relativeBearing1)} / ${formatRelativeBearing(measurement.relativeBearing2)}</span>`;
@@ -1819,41 +1706,29 @@ function createMeasurementLabel(measurement) {
         const bearingText = `<span class="measurement-bearing">${formatBearing(measurement.bearing)} / ${formatBearing(measurement.reciprocalBearing)}</span>`;
         let distAltText = `<span class="measurement-dist-alt">${measurement.distanceNM.toFixed(1)} NM`;
         let extraInfo = "";
-
         if (measurement.start.type === 'aircraft' && measurement.estimatedAltitude !== null && measurement.estimatedAltitude !== undefined) {
-             distAltText += ` / ~${formatFlightLevel(measurement.estimatedAltitude)} (to RWY)`;
+            distAltText += ` / ~${formatFlightLevel(measurement.estimatedAltitude)} (to RWY)`;
         } else if (measurement.start.type === 'runwayCenter' && measurement.end.type === 'aircraft') {
             const acEnd = aircrafts.find(a => a.id === measurement.end.id);
             if (acEnd) {
                 distAltText += ` / ${formatFlightLevel(acEnd.altitude)}`;
-                if(measurement.relativeBearing2 !== null) {
-                    extraInfo = `<span class="measurement-relative-bearing">AC to RWY: ${formatRelativeBearing(measurement.relativeBearing2)}</span>`;
-                }
+                if(measurement.relativeBearing2 !== null) { extraInfo = `<span class="measurement-relative-bearing">AC to RWY: ${formatRelativeBearing(measurement.relativeBearing2)}</span>`; }
             }
         }
-        distAltText += `</span>`;
-        labelContent = bearingText + extraInfo + distAltText;
+        distAltText += `</span>`; labelContent = bearingText + extraInfo + distAltText;
     } else {
         const bearingText = `<span class="measurement-bearing">${formatBearing(measurement.bearing)} / ${formatBearing(measurement.reciprocalBearing)}</span>`;
         let distAltText = `<span class="measurement-dist-alt">${measurement.distanceNM.toFixed(1)} NM`;
-        if (measurement.estimatedAltitude !== null && measurement.estimatedAltitude !== undefined) {
-            distAltText += ` / ~${formatFlightLevel(measurement.estimatedAltitude)}`;
-        }
-        distAltText += `</span>`;
-        labelContent = bearingText + distAltText;
+        if (measurement.estimatedAltitude !== null && measurement.estimatedAltitude !== undefined) { distAltText += ` / ~${formatFlightLevel(measurement.estimatedAltitude)}`; }
+        distAltText += `</span>`; labelContent = bearingText + distAltText;
     }
-    label.innerHTML = labelContent;
-    document.body.appendChild(label);
-    measurement.labelElement = label;
-    measurement.labelDragged = false;
-    measurement.draggedLabelDeltaX = 0;
-    measurement.draggedLabelDeltaY = 0;
+    label.innerHTML = labelContent; document.body.appendChild(label);
+    measurement.labelElement = label; measurement.labelDragged = false;
+    measurement.draggedLabelDeltaX = 0; measurement.draggedLabelDeltaY = 0;
     updateMeasurementLabelPositionDOM(measurement);
     label.addEventListener('mousedown', (e) => startLabelDrag(e, measurement, 'measurement'));
     label.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-        measurements = measurements.filter(m => m.id !== measurement.id);
-        label.remove();
+        e.preventDefault(); measurements = measurements.filter(m => m.id !== measurement.id); label.remove();
     });
 }
 function updateMeasurementLabelPositionDOM(measurement) {
@@ -1862,9 +1737,7 @@ function updateMeasurementLabelPositionDOM(measurement) {
             const midXWorld = (measurement.start.x + measurement.end.x) / 2;
             const midYWorld = (measurement.start.y + measurement.end.y) / 2;
             const screenPos = worldToScreen(midXWorld, midYWorld);
-
             const labelHeight = measurement.labelElement.offsetHeight || 20;
-
             if (measurement.labelDragged) {
                 measurement.labelX = screenPos.x + measurement.draggedLabelDeltaX;
                 measurement.labelY = screenPos.y + measurement.draggedLabelDeltaY;
@@ -1872,11 +1745,9 @@ function updateMeasurementLabelPositionDOM(measurement) {
                 measurement.labelX = screenPos.x + 10;
                 measurement.labelY = screenPos.y - (labelHeight / 2);
             }
-
             const labelWidth = measurement.labelElement.offsetWidth || 80;
             measurement.labelX = Math.max(0, Math.min(measurement.labelX, window.innerWidth - labelWidth));
             measurement.labelY = Math.max(0, Math.min(measurement.labelY, window.innerHeight - labelHeight));
-
             measurement.labelElement.style.left = `${measurement.labelX}px`;
             measurement.labelElement.style.top = `${measurement.labelY}px`;
         }
@@ -1884,26 +1755,14 @@ function updateMeasurementLabelPositionDOM(measurement) {
     }
 }
 
-// --- Popup Menü ---
-
 function showPopupForField(x, y, field) {
-    if (!selectedAircraft) return;
-    popup.innerHTML = ''; // Popup'ı her yeni açılışta temizle
-
-    let values = [];
-    let current;
-    // Geçici dönüş yönü komutunu, popup açılırken uçağın mevcut aktif dönüş komutundan al.
-    // Eğer uçak zaten bir L/R komutuyla ve aktif olarak dönüyorsa ('turning' true ise), o komutu yansıt.
-    // Aksi halde 0 (komut yok veya dönüş aktif değil) olarak başlat.
+    if (!selectedAircraft) return; popup.innerHTML = '';
+    let values = []; let current;
     let tempCommandedTurnDirection = (selectedAircraft.turning && selectedAircraft.commandedTurnDirection !== 0) ? selectedAircraft.commandedTurnDirection : 0;
-
     if (field === 'heading') {
-        current = selectedAircraft.targetHeading; // Uçağın mevcut hedef başı
-
-        // Popup HTML'ini oluştur (manuel giriş ve sıralı heading listesi için yerleşim)
+        current = selectedAircraft.targetHeading;
         popup.innerHTML = `
-            <div id="headingValues" style="max-height: 140px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #0f0 #555; margin-bottom: 5px;">
-                </div>
+            <div id="headingValues" style="max-height: 140px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #0f0 #555; margin-bottom: 5px;"></div>
             <div id="turnButtons" style="margin-bottom: 5px;">
                 <div class="turn-btn control-button" data-direction="-1">LEFT</div>
                 <div class="turn-btn control-button" data-direction="1">RIGHT</div>
@@ -1912,106 +1771,53 @@ function showPopupForField(x, y, field) {
                 <input type="number" id="manualHeadingInput" min="0" max="359" step="1" style="width: 50px; text-align: right; margin-right: 5px; padding: 3px; font-size:12px; background-color: #eee; color: #333; border: 1px solid #777; border-radius:2px;" placeholder="HDG">
                 <button id="submitManualHeading" class="control-button" style="padding: 3px 8px; font-size: 11px; min-width: unset; margin-bottom:0px; background-color: #4CAF50; border-color: #4CAF50;">Set</button>
             </div>`;
-
         const headingValuesContainer = document.getElementById('headingValues');
         const turnButtonsContainer = document.getElementById('turnButtons');
         const manualHeadingInput = document.getElementById('manualHeadingInput');
         const submitManualHeadingBtn = document.getElementById('submitManualHeading');
-
-        // Ortak heading ayarlama fonksiyonu (hem listeden seçim hem de manuel giriş için)
         const applyHeadingChange = (newHeadingStr) => {
             const newHeading = parseInt(newHeadingStr, 10);
-            if (isNaN(newHeading) || newHeading < 0 || newHeading > 359) { // 360 da 0 olarak kabul edilebilir
-                if (parseInt(newHeadingStr, 10) === 360) { // Kullanıcı 360 girdiyse 0 kabul et
-                     selectedAircraft.targetHeading = 0;
-                } else {
-                    console.error("Geçersiz heading değeri:", newHeadingStr);
+            if (isNaN(newHeading) || newHeading < 0 || newHeading > 359) {
+                if (parseInt(newHeadingStr, 10) === 360) { selectedAircraft.targetHeading = 0; }
+                else {
                     if(manualHeadingInput) manualHeadingInput.style.borderColor = 'red';
-                    setTimeout(() => { if(manualHeadingInput) manualHeadingInput.style.borderColor = '#777'; }, 1500);
-                    return;
+                    setTimeout(() => { if(manualHeadingInput) manualHeadingInput.style.borderColor = '#777'; }, 1500); return;
                 }
-            } else {
-                 selectedAircraft.targetHeading = newHeading;
-            }
-
-            if (selectedAircraft.isIntercepting) { // Eğer uçak localizer intercept ediyorsa, bu komut intercept'i iptal eder.
-                selectedAircraft.isIntercepting = false;
-                console.log(`${selectedAircraft.id} için intercept iptal edildi, yeni baş ayarlandı.`);
-            }
-            selectedAircraft.turning = true;      // Uçağın dönmeye başlamasını sağla
-            selectedAircraft.commandedTurnDirection = tempCommandedTurnDirection; // Popup'ta seçilen L/R yönünü uygula
-
-            popup.style.display = 'none'; // Popup'ı kapat
-            updateTopCenterButtonStates(); // Intercept durumu değişmiş olabilir, butonları güncelle
+            } else { selectedAircraft.targetHeading = newHeading; }
+            if (selectedAircraft.isIntercepting) { selectedAircraft.isIntercepting = false; }
+            selectedAircraft.turning = true; selectedAircraft.commandedTurnDirection = tempCommandedTurnDirection;
+            popup.style.display = 'none'; updateTopCenterButtonStates();
         };
-
-        // Manuel giriş için olay dinleyicileri
-        submitManualHeadingBtn.addEventListener('click', () => {
-            applyHeadingChange(manualHeadingInput.value);
-        });
-        manualHeadingInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                submitManualHeadingBtn.click(); // "Set" butonunun click olayını tetikle
-            }
-        });
-
-        // "LEFT" ve "RIGHT" butonlarının başlangıçtaki aktif durumunu ayarla
+        submitManualHeadingBtn.addEventListener('click', () => { applyHeadingChange(manualHeadingInput.value); });
+        manualHeadingInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') { submitManualHeadingBtn.click(); } });
         turnButtonsContainer.querySelectorAll('.turn-btn').forEach(btn => {
-            if (parseInt(btn.dataset.direction) === tempCommandedTurnDirection) { // tempCommandedTurnDirection 0 değilse aktif olur
-                btn.classList.add('active');
-            }
-        });
-
-        // "LEFT" ve "RIGHT" butonları için olay dinleyicileri (sadece tempCommandedTurnDirection'ı günceller)
-        turnButtonsContainer.querySelectorAll('.turn-btn').forEach(btn => {
+            if (parseInt(btn.dataset.direction) === tempCommandedTurnDirection) btn.classList.add('active');
             btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const clickedDir = parseInt(e.target.dataset.direction);
-                if (tempCommandedTurnDirection === clickedDir) {
-                    tempCommandedTurnDirection = 0;
-                    e.target.classList.remove('active');
-                } else {
-                    tempCommandedTurnDirection = clickedDir;
-                    turnButtonsContainer.querySelectorAll('.turn-btn').forEach(b => b.classList.remove('active'));
-                    e.target.classList.add('active');
-                }
+                e.stopPropagation(); const clickedDir = parseInt(e.target.dataset.direction);
+                if (tempCommandedTurnDirection === clickedDir) { tempCommandedTurnDirection = 0; e.target.classList.remove('active'); }
+                else { tempCommandedTurnDirection = clickedDir; turnButtonsContainer.querySelectorAll('.turn-btn').forEach(b => b.classList.remove('active')); e.target.classList.add('active'); }
             });
         });
-
-        // Heading değerleri listesini oluştur (360 en üstte, sonra 355, ..., 0)
-        // "360°" (aslında 0 derece) seçeneğini en üste ekle
-        const div360 = document.createElement('div');
-        div360.textContent = `360°`;
-        div360.onclick = () => applyHeadingChange(0); // 360 derece 0 derece demektir
-        headingValuesContainer.appendChild(div360);
-
-        // Sonra 355'ten 0'a kadar olanları (5'er derece arayla) ekle
+        const div360 = document.createElement('div'); div360.textContent = `360°`; div360.onclick = () => applyHeadingChange(0); headingValuesContainer.appendChild(div360);
         for (let i = 355; i >= 0; i -= 5) {
-            const val = i;
-            const div = document.createElement('div');
+            const val = i; const div = document.createElement('div');
             div.textContent = `${val.toString().padStart(3, '0')}°`;
-            // Hover efekti için CSS class'ı eklenebilir veya direkt CSS ile hedeflenebilir
-            // div.classList.add('heading-option-item');
-            div.onclick = () => applyHeadingChange(val);
-            headingValuesContainer.appendChild(div);
+            div.onclick = () => applyHeadingChange(val); headingValuesContainer.appendChild(div);
         }
-
     } else if (field === 'speedKTS') {
         current = selectedAircraft.speedKTS;
         values = Array.from({ length: (600 - 100) / 10 + 1 }, (_, i) => 100 + i * 10);
         values.forEach(val => {
-            const div = document.createElement('div');
-            div.textContent = `${val} kts`;
+            const div = document.createElement('div'); div.textContent = `${val} kts`;
             if (val === current) div.classList.add('current-value');
             div.onclick = () => { selectedAircraft.speedKTS = val; popup.style.display = 'none'; };
             popup.appendChild(div);
         });
     } else if (field === 'altitude') {
         current = selectedAircraft.targetAltitude;
-        values = Array.from({ length: (450 - 10) / 5 + 1 }, (_, i) => (10 + i * 5) * 100); // FL010 to FL450 in FL5 steps
+        values = Array.from({ length: (450 - 10) / 5 + 1 }, (_, i) => (10 + i * 5) * 100);
         values.forEach(val => {
-            const div = document.createElement('div');
-            div.textContent = formatFlightLevel(val);
+            const div = document.createElement('div'); div.textContent = formatFlightLevel(val);
             if (val === current) div.classList.add('current-value');
             div.onclick = () => {
                 selectedAircraft.targetAltitude = val;
@@ -2019,8 +1825,7 @@ function showPopupForField(x, y, field) {
                     selectedAircraft.rateOfClimb = aircraftPerformanceROC[selectedAircraft.type] || DEFAULT_CLIMB_RATE;
                     selectedAircraft.rateOfDescent = 0;
                 } else if (selectedAircraft.altitude > val && selectedAircraft.rateOfDescent === 0) {
-                    selectedAircraft.rateOfDescent = DEFAULT_ROD;
-                    selectedAircraft.rateOfClimb = 0;
+                    selectedAircraft.rateOfDescent = DEFAULT_ROD; selectedAircraft.rateOfClimb = 0;
                 }
                 popup.style.display = 'none';
             };
@@ -2042,222 +1847,107 @@ function showPopupForField(x, y, field) {
             popup.appendChild(div);
         });
     }
-
-    // Popup pozisyonlandırma mantığı
-    popup.style.width = '160px'; // Genişlik manuel giriş için biraz artırıldı
-    popup.style.maxHeight = '260px'; // Maksimum yükseklik biraz artırıldı
-
-    // Boyutları doğru okuyabilmek için popup'ı DOM'da yer kaplar hale getir ama görünmez yap
-    popup.style.visibility = 'hidden';
-    popup.style.display = 'block';
-
-    const actualPopupWidth = popup.offsetWidth;
-    const actualPopupHeight = popup.offsetHeight;
-
-    // Başlangıç pozisyonunu fare tıklamasının biraz sağ altı olarak ayarla
-    let finalX = x + 10;
-    let finalY = y + 10;
-    const screenMargin = 15; // Ekran kenarlarına bırakılacak minimum boşluk
-
-    // Sağ kenardan taşma kontrolü
-    if (finalX + actualPopupWidth > window.innerWidth - screenMargin) {
-        finalX = x - actualPopupWidth - 10; // Taşarsa, tıklamanın soluna al
-    }
-    // Sol kenardan taşma kontrolü (sola aldıktan sonra veya baştan)
-    if (finalX < screenMargin) {
-        finalX = screenMargin;
-    }
-
-    // Alt kenardan taşma kontrolü
-    if (finalY + actualPopupHeight > window.innerHeight - screenMargin) {
-        finalY = y - actualPopupHeight - 10; // Taşarsa, tıklamanın üstüne al
-    }
-    // Üst kenardan taşma kontrolü (üste aldıktan sonra veya baştan)
-    if (finalY < screenMargin) {
-        finalY = screenMargin;
-    }
-
-    // Hesaplanmış son pozisyonu uygula ve popup'ı görünür yap
-    popup.style.left = `${finalX}px`;
-    popup.style.top = `${finalY}px`;
+    popup.style.width = '160px'; popup.style.maxHeight = '260px';
+    popup.style.visibility = 'hidden'; popup.style.display = 'block';
+    const actualPopupWidth = popup.offsetWidth; const actualPopupHeight = popup.offsetHeight;
+    let finalX = x + 10; let finalY = y + 10; const screenMargin = 15;
+    if (finalX + actualPopupWidth > window.innerWidth - screenMargin) finalX = x - actualPopupWidth - 10;
+    if (finalX < screenMargin) finalX = screenMargin;
+    if (finalY + actualPopupHeight > window.innerHeight - screenMargin) finalY = y - actualPopupHeight - 10;
+    if (finalY < screenMargin) finalY = screenMargin;
+    popup.style.left = `${finalX}px`; popup.style.top = `${finalY}px`;
     popup.style.visibility = 'visible';
-    // popup.style.display = 'block'; // Zaten yukarıda 'block' yapılmıştı.
 }
 
-// --- Olay Dinleyiciler ---  EventListeners
+// --- Olay Dinleyiciler ---
 canvas.addEventListener('mousedown', function(event) {
     if (event.button === 1 || (event.button === 0 && event.ctrlKey)) {
-        if (!isDraggingLabel) {
-            isPanning = true;
-            canvas.style.cursor = 'grabbing';
-            event.preventDefault();
-        }
+        if (!isDraggingLabel) { isPanning = true; canvas.style.cursor = 'grabbing'; event.preventDefault(); }
     } else if (event.button === 0) {
-        if (!isDraggingLabel) {
-            canvas.style.cursor = isMeasuring ? 'crosshair' : (isPlacingAircraft ? 'crosshair' : 'grab');
-        }
+        if (!isDraggingLabel) canvas.style.cursor = isMeasuring ? 'crosshair' : (isPlacingAircraft ? 'crosshair' : 'grab');
     }
 });
-
 canvas.addEventListener('contextmenu', function(event) {
-    // Eğer ölçüm modundaysak ve ilk nokta seçilmişse (ikinci nokta bekleniyorsa)
     if (isMeasuring && measurementStartPoint) {
-        event.preventDefault(); // Tarayıcının varsayılan sağ tık menüsünü engelle
-
-        // console.log("Ölçüm işlemi sağ tık ile iptal edildi."); // Test için log
-
-        isMeasuring = false;
-        measurementStartPoint = null;
-        hoveredAircraftForMeasure = null; // Olası hover durumlarını temizle
-        hoveredRunwayCenterForMeasure = false; // Olası hover durumlarını temizle
-
-        if (measureButton) {
-            measureButton.classList.remove('measuring');
-            measureButton.textContent = 'Ölçüm Yap';
-        }
-
-        // Canvas cursor'unu, diğer aktif modlara (örn: uçak yerleştirme) veya varsayılana göre ayarla
-        if (isPlacingAircraft) {
-            canvas.style.cursor = 'crosshair';
-        } else {
-            canvas.style.cursor = 'grab'; // Veya 'default' veya pan için 'grab'
-        }
-
-        if (tempMeasurementLabel) {
-            tempMeasurementLabel.style.display = 'none'; // Geçici ölçüm etiketini gizle
-        }
-        
-        // Ölçüm iptal edildiğinde, seçili uçağın seçimini kaldırmaya gerek yok,
-        // sadece ölçüm işlemi sonlandırılıyor.
-        // updateTopCenterButtonStates(); // Eğer buton durumları değişiyorsa çağrılabilir.
-        // drawRadar(); // Genellikle mousemove bunu tetikleyeceği için gerekmeyebilir.
+        event.preventDefault(); isMeasuring = false; measurementStartPoint = null;
+        hoveredAircraftForMeasure = null; hoveredRunwayCenterForMeasure = false;
+        if (measureButton) { measureButton.classList.remove('measuring'); measureButton.textContent = 'Ölçüm Yap'; }
+        canvas.style.cursor = isPlacingAircraft ? 'crosshair' : 'grab';
+        if (tempMeasurementLabel) tempMeasurementLabel.style.display = 'none';
     }
-    // Eğer ölçüm modunda değilsek veya ilk nokta henüz seçilmemişse,
-    // bu listener bir şey yapmaz ve normal sağ tık davranışı (eğer varsa) devam eder.
-    // VEYA, eğer kalıcı bir ölçüm etiketinin kendi sağ tık menüsü varsa, o çalışır.
 });
-
-
 
 function handleGlobalMouseMove(event) {
-    const currentMouseX = event.clientX;
-    const currentMouseY = event.clientY;
-
+    const currentMouseX = event.clientX; const currentMouseY = event.clientY;
     if (isDraggingLabel && draggedLabelItem) {
-        let newX = currentMouseX - dragOffsetX;
-        let newY = currentMouseY - dragOffsetY;
+        let newX = currentMouseX - dragOffsetX; let newY = currentMouseY - dragOffsetY;
         const labelWidth = draggedLabelItem.labelElement.offsetWidth;
         const labelHeight = draggedLabelItem.labelElement.offsetHeight;
         newX = Math.max(0, Math.min(newX, window.innerWidth - labelWidth));
         newY = Math.max(0, Math.min(newY, window.innerHeight - labelHeight));
-        draggedLabelItem.labelX = newX;
-        draggedLabelItem.labelY = newY;
+        draggedLabelItem.labelX = newX; draggedLabelItem.labelY = newY;
         if (draggedLabelItem.labelElement) {
             draggedLabelItem.labelElement.style.left = `${newX}px`;
             draggedLabelItem.labelElement.style.top = `${newY}px`;
         }
-        if (runwayCenterHoverText) runwayCenterHoverText.style.display = 'none';
-        return;
+        if (runwayCenterHoverText) runwayCenterHoverText.style.display = 'none'; return;
     }
-
     if (isPanning && (event.buttons === 4 || (event.buttons === 1 && event.ctrlKey))) {
-        const dx = currentMouseX - lastMouseX;
-        const dy = currentMouseY - lastMouseY;
-        let newPanX = panX + dx;
-        let newPanY = panY + dy;
-
-        const panLimitNM = 150;
-        const panLimitWorldPixels = nmToWorldPixels(panLimitNM);
-
+        const dx = currentMouseX - lastMouseX; const dy = currentMouseY - lastMouseY;
+        let newPanX = panX + dx; let newPanY = panY + dy;
+        const panLimitNM = 150; const panLimitWorldPixels = nmToWorldPixels(panLimitNM);
         const minPanX = centerX * (1 - zoom) - panLimitWorldPixels * zoom;
         const maxPanX = centerX * (1 - zoom) + panLimitWorldPixels * zoom;
         const minPanY = centerY * (1 - zoom) - panLimitWorldPixels * zoom;
         const maxPanY = centerY * (1 - zoom) + panLimitWorldPixels * zoom;
-
         newPanX = Math.max(minPanX, Math.min(newPanX, maxPanX));
         newPanY = Math.max(minPanY, Math.min(newPanY, maxPanY));
-
-        panX = newPanX;
-        panY = newPanY;
-
-        lastMouseX = currentMouseX;
-        lastMouseY = currentMouseY;
-        event.preventDefault();
+        panX = newPanX; panY = newPanY;
+        lastMouseX = currentMouseX; lastMouseY = currentMouseY; event.preventDefault();
         if (runwayCenterHoverText) runwayCenterHoverText.style.display = 'none';
-        hoveredAircraftForMeasure = null;
-        hoveredRunwayCenterForMeasure = false;
-        return;
+        hoveredAircraftForMeasure = null; hoveredRunwayCenterForMeasure = false; return;
     }
-
     const worldMousePosForHover = screenToWorld(currentMouseX, currentMouseY);
-    const runwayCenterHoverRadiusWorld = 5 / zoom;
-    let isHoveringRunwayCenter = false;
+    const runwayCenterHoverRadiusWorld = 5 / zoom; let isHoveringRunwayCenter = false;
     if (centerX !== undefined && centerY !== undefined) {
-        const distToRunwayCenter = Math.sqrt(
-            Math.pow(worldMousePosForHover.x - centerX, 2) +
-            Math.pow(worldMousePosForHover.y - centerY, 2)
-        );
-        if (distToRunwayCenter < runwayCenterHoverRadiusWorld) {
-            isHoveringRunwayCenter = true;
-        }
+        const distToRunwayCenter = Math.sqrt(Math.pow(worldMousePosForHover.x - centerX, 2) + Math.pow(worldMousePosForHover.y - centerY, 2));
+        if (distToRunwayCenter < runwayCenterHoverRadiusWorld) isHoveringRunwayCenter = true;
     }
-
     if (isHoveringRunwayCenter && !isDraggingLabel && !isPanning) {
         if (runwayCenterHoverText) {
             runwayCenterHoverText.style.left = `${currentMouseX + 7}px`;
             runwayCenterHoverText.style.top = `${currentMouseY - 15}px`;
             runwayCenterHoverText.style.display = 'block';
         }
-    } else {
-        if (runwayCenterHoverText) {
-            runwayCenterHoverText.style.display = 'none';
-        }
-    }
-
-    hoveredAircraftForMeasure = null;
-    hoveredRunwayCenterForMeasure = false;
-
+    } else { if (runwayCenterHoverText) runwayCenterHoverText.style.display = 'none'; }
+    hoveredAircraftForMeasure = null; hoveredRunwayCenterForMeasure = false;
     if (isMeasuring) {
         const worldMousePos = screenToWorld(currentMouseX, currentMouseY);
         const runwayCenterClickRadiusWorld = 5 / zoom;
         const distToCenterForMeasure = Math.sqrt(Math.pow(worldMousePos.x - centerX, 2) + Math.pow(worldMousePos.y - centerY, 2));
-
         if (distToCenterForMeasure < runwayCenterClickRadiusWorld) {
-            hoveredRunwayCenterForMeasure = true;
-            canvas.style.cursor = 'crosshair';
+            hoveredRunwayCenterForMeasure = true; canvas.style.cursor = 'crosshair';
         } else {
-            const hoverThresholdWorld = 6 / zoom;
-            let foundAircraft = null;
+            const hoverThresholdWorld = 6 / zoom; let foundAircraft = null;
             for (const ac of aircrafts) {
                 const dist = Math.sqrt(Math.pow(worldMousePos.x - ac.x, 2) + Math.pow(worldMousePos.y - ac.y, 2));
-                if (dist < hoverThresholdWorld) {
-                    foundAircraft = ac;
-                    break;
-                }
+                if (dist < hoverThresholdWorld) { foundAircraft = ac; break; }
             }
             hoveredAircraftForMeasure = foundAircraft;
-            if (!foundAircraft) {
-                 canvas.style.cursor = 'crosshair';
-            }
+            if (!foundAircraft) canvas.style.cursor = 'crosshair';
         }
-    } else {
-        if (!isPanning && !isDraggingLabel) {
-             canvas.style.cursor = isPlacingAircraft ? 'crosshair' : 'grab';
-        }
-    }
-
-    lastMouseX = currentMouseX;
-    lastMouseY = currentMouseY;
+    } else { if (!isPanning && !isDraggingLabel) canvas.style.cursor = isPlacingAircraft ? 'crosshair' : 'grab'; }
+    lastMouseX = currentMouseX; lastMouseY = currentMouseY;
 }
 document.addEventListener('mousemove', handleGlobalMouseMove);
 
 canvas.addEventListener('mouseup', function(event) {
     if (isPanning && (event.button === 1 || (event.button === 0 && event.ctrlKey))) {
-        isPanning = false; if (!isDraggingLabel) { canvas.style.cursor = isMeasuring ? 'crosshair' : (isPlacingAircraft ? 'crosshair' : 'grab'); }
+        isPanning = false; if (!isDraggingLabel) canvas.style.cursor = isMeasuring ? 'crosshair' : (isPlacingAircraft ? 'crosshair' : 'grab');
     }
 });
 document.addEventListener('mouseup', function(event) {
-    if (event.button === 1) {
+    if (event.button === 1) { // Orta tuş bırakıldığında
         if (isDraggingLabel && draggedLabelItem) {
             let anchorScreenX, anchorScreenY;
             if (draggedLabelType === 'aircraft') { const sP = worldToScreen(draggedLabelItem.x, draggedLabelItem.y); anchorScreenX = sP.x; anchorScreenY = sP.y; }
@@ -2270,150 +1960,96 @@ document.addEventListener('mouseup', function(event) {
                 draggedLabelItem.draggedLabelDeltaY = draggedLabelItem.labelY - anchorScreenY;
             }
             draggedLabelItem.labelDragged = true;
-            if (draggedLabelItem.labelElement) { draggedLabelItem.labelElement.classList.remove('dragging'); }
+            if (draggedLabelItem.labelElement) draggedLabelItem.labelElement.classList.remove('dragging');
             isDraggingLabel = false; draggedLabelItem = null; draggedLabelType = null;
             canvas.style.cursor = isMeasuring ? 'crosshair' : (isPlacingAircraft ? 'crosshair' : 'grab');
         }
-        if (isPanning) {
+        if (isPanning) { // Eğer orta tuşla pan yapılıyorsa
             isPanning = false;
             canvas.style.cursor = isMeasuring ? 'crosshair' : (isPlacingAircraft ? 'crosshair' : 'grab');
         }
     }
 });
 canvas.addEventListener('mouseleave', function() {
-    hoveredAircraftForMeasure = null;
-    hoveredRunwayCenterForMeasure = false;
+    hoveredAircraftForMeasure = null; hoveredRunwayCenterForMeasure = false;
     if (runwayCenterHoverText) runwayCenterHoverText.style.display = 'none';
 });
 canvas.addEventListener('click', function(event) {
     if (isMeasuring) {
-        let clickTarget;
-        const worldClickPosForCheck = screenToWorld(event.clientX, event.clientY);
-
+        let clickTarget; const worldClickPosForCheck = screenToWorld(event.clientX, event.clientY);
         const runwayCenterClickRadiusWorld = 5 / zoom;
-        const distToRunwayCenter = Math.sqrt(
-            Math.pow(worldClickPosForCheck.x - centerX, 2) +
-            Math.pow(worldClickPosForCheck.y - centerY, 2)
-        );
-
+        const distToRunwayCenter = Math.sqrt(Math.pow(worldClickPosForCheck.x - centerX, 2) + Math.pow(worldClickPosForCheck.y - centerY, 2));
         if (distToRunwayCenter < runwayCenterClickRadiusWorld) {
             clickTarget = { x: centerX, y: centerY, type: 'runwayCenter', id: 'RUNWAY_CENTER' };
-            console.log("Measuring: Clicked on runway center");
         } else {
-            const clickThresholdWorld = 5 / zoom;
-            let clickedAircraftCheck = null;
+            const clickThresholdWorld = 5 / zoom; let clickedAircraftCheck = null;
             for (const ac of aircrafts) {
                 const distance = Math.sqrt(Math.pow(worldClickPosForCheck.x - ac.x, 2) + Math.pow(worldClickPosForCheck.y - ac.y, 2));
-                if (distance < clickThresholdWorld) {
-                    clickedAircraftCheck = ac;
-                    break;
-                }
+                if (distance < clickThresholdWorld) { clickedAircraftCheck = ac; break; }
             }
-
-            if (clickedAircraftCheck) {
-                clickTarget = { x: clickedAircraftCheck.x, y: clickedAircraftCheck.y, type: 'aircraft', id: clickedAircraftCheck.id };
-                console.log("Measuring: Clicked on aircraft", clickedAircraftCheck.id);
-            } else {
-                const worldClickPos = screenToWorld(event.clientX, event.clientY);
-                clickTarget = { x: worldClickPos.x, y: worldClickPos.y, type: 'point', id: null };
-                console.log("Measuring: Clicked on point");
-            }
+            if (clickedAircraftCheck) { clickTarget = { x: clickedAircraftCheck.x, y: clickedAircraftCheck.y, type: 'aircraft', id: clickedAircraftCheck.id }; }
+            else { const worldClickPos = screenToWorld(event.clientX, event.clientY); clickTarget = { x: worldClickPos.x, y: worldClickPos.y, type: 'point', id: null }; }
         }
-
-
         if (!measurementStartPoint) {
-            measurementStartPoint = clickTarget;
-            canvas.style.cursor = 'crosshair';
+            measurementStartPoint = clickTarget; canvas.style.cursor = 'crosshair';
             measureButton.textContent = 'Ölçüm: İkinci Nokta';
-            hoveredAircraftForMeasure = null;
-            hoveredRunwayCenterForMeasure = false;
-            tempMeasurementLabel.style.display = 'block';
-            console.log("Measuring: Start point set", measurementStartPoint);
+            hoveredAircraftForMeasure = null; hoveredRunwayCenterForMeasure = false;
+            if (tempMeasurementLabel) tempMeasurementLabel.style.display = 'block';
         } else {
             try {
                 const measurementEndPoint = clickTarget;
-                console.log("Measuring: End point set", measurementEndPoint);
-                const dx = measurementEndPoint.x - measurementStartPoint.x;
-                const dy = measurementEndPoint.y - measurementStartPoint.y;
-                const distanceWorldPixels = Math.sqrt(dx * dx + dy * dy);
-                const distanceNM = worldPixelsToNm(distanceWorldPixels);
+                const dx = measurementEndPoint.x - measurementStartPoint.x; const dy = measurementEndPoint.y - measurementStartPoint.y;
+                const distanceWorldPixels = Math.sqrt(dx * dx + dy * dy); const distanceNM = worldPixelsToNm(distanceWorldPixels);
                 let estimatedAltitude = null; let bearing = null; let reciprocalBearing = null; let relativeBearing1 = null; let relativeBearing2 = null;
-
                 bearing = calculateBearing(measurementStartPoint.x, measurementStartPoint.y, measurementEndPoint.x, measurementEndPoint.y);
                 reciprocalBearing = (bearing + 180) % 360;
-
                 if (measurementStartPoint.type === 'aircraft') {
                     const startAircraft = aircrafts.find(a => a.id === measurementStartPoint.id);
                     if (startAircraft) {
                         if (measurementEndPoint.type === 'point' || measurementEndPoint.type === 'runwayCenter') {
-                             if (startAircraft.speedKTS > 0) {
-                                const timeHours = distanceNM / startAircraft.speedKTS;
-                                const timeMinutes = timeHours * 60;
-                                let verticalDirection = 0;
-                                if (startAircraft.altitude !== startAircraft.targetAltitude) {
-                                    verticalDirection = Math.sign(startAircraft.targetAltitude - startAircraft.altitude);
-                                }
+                            if (startAircraft.speedKTS > 0) {
+                                const timeHours = distanceNM / startAircraft.speedKTS; const timeMinutes = timeHours * 60;
+                                let verticalDirection = 0; if (startAircraft.altitude !== startAircraft.targetAltitude) verticalDirection = Math.sign(startAircraft.targetAltitude - startAircraft.altitude);
                                 let effectiveRodMagnitude = 0;
-                                if (startAircraft.rateOfDescent !== 0 && verticalDirection < 0) {
-                                    effectiveRodMagnitude = Math.abs(startAircraft.rateOfDescent);
-                                } else if (startAircraft.rateOfClimb !== 0 && verticalDirection > 0) {
-                                     effectiveRodMagnitude = Math.abs(startAircraft.rateOfClimb);
-                                } else if (verticalDirection !== 0) {
-                                    effectiveRodMagnitude = verticalDirection > 0 ? DEFAULT_CLIMB_RATE : DEFAULT_ROD;
-                                }
+                                if (startAircraft.rateOfDescent !== 0 && verticalDirection < 0) effectiveRodMagnitude = Math.abs(startAircraft.rateOfDescent);
+                                else if (startAircraft.rateOfClimb !== 0 && verticalDirection > 0) effectiveRodMagnitude = Math.abs(startAircraft.rateOfClimb);
+                                else if (verticalDirection !== 0) effectiveRodMagnitude = verticalDirection > 0 ? DEFAULT_CLIMB_RATE : DEFAULT_ROD;
                                 const altitudeChange = verticalDirection * effectiveRodMagnitude * timeMinutes;
-                                estimatedAltitude = startAircraft.altitude + altitudeChange;
-                                estimatedAltitude = Math.max(0, estimatedAltitude);
+                                estimatedAltitude = startAircraft.altitude + altitudeChange; estimatedAltitude = Math.max(0, estimatedAltitude);
                             }
                         } else if (measurementEndPoint.type === 'aircraft') {
                             const endAircraft = aircrafts.find(a => a.id === measurementEndPoint.id);
-                            if (endAircraft) {
-                                relativeBearing1 = angleDiff(bearing, startAircraft.heading);
-                                relativeBearing2 = angleDiff(reciprocalBearing, endAircraft.heading);
-                            }
+                            if (endAircraft) { relativeBearing1 = angleDiff(bearing, startAircraft.heading); relativeBearing2 = angleDiff(reciprocalBearing, endAircraft.heading); }
                         }
                     }
-                }
-                else if (measurementStartPoint.type === 'runwayCenter' && measurementEndPoint.type === 'aircraft') {
+                } else if (measurementStartPoint.type === 'runwayCenter' && measurementEndPoint.type === 'aircraft') {
                     const endAircraft = aircrafts.find(a => a.id === measurementEndPoint.id);
-                    if (endAircraft) {
-                        relativeBearing2 = angleDiff(reciprocalBearing, endAircraft.heading);
-                    }
+                    if (endAircraft) relativeBearing2 = angleDiff(reciprocalBearing, endAircraft.heading);
                 }
-
                 const newMeasurement = {
                     id: Date.now(), start: { ...measurementStartPoint }, end: { ...measurementEndPoint }, distanceNM: distanceNM, bearing: bearing, reciprocalBearing: reciprocalBearing,
                     relativeBearing1: relativeBearing1, relativeBearing2: relativeBearing2, estimatedAltitude: estimatedAltitude,
                     labelElement: null, labelX: 0, labelY: 0, labelDragged: false, draggedLabelDeltaX: 0, draggedLabelDeltaY: 0
                 };
-                measurements.push(newMeasurement);
-                createMeasurementLabel(newMeasurement);
-
-            } catch (error) {
-                console.error("Error during measurement completion:", error);
+                measurements.push(newMeasurement); createMeasurementLabel(newMeasurement);
+            } catch (error) { console.error("Error during measurement completion:", error);
             } finally {
-                isMeasuring = false;
-                measurementStartPoint = null;
-                hoveredAircraftForMeasure = null;
-                hoveredRunwayCenterForMeasure = false;
-                measureButton.classList.remove('measuring');
-                measureButton.textContent = 'Ölçüm Yap';
+                isMeasuring = false; measurementStartPoint = null;
+                hoveredAircraftForMeasure = null; hoveredRunwayCenterForMeasure = false;
+                measureButton.classList.remove('measuring'); measureButton.textContent = 'Ölçüm Yap';
                 canvas.style.cursor = isPlacingAircraft ? 'crosshair' : 'grab';
                 if (tempMeasurementLabel) tempMeasurementLabel.style.display = 'none';
-                console.log("Measuring finished (or error occurred).");
             }
         }
-        event.stopPropagation();
-        return;
+        event.stopPropagation(); return;
     }
-
     if (isPanning || isDraggingLabel || event.ctrlKey || event.button !== 0) return;
     const worldClickPos = screenToWorld(event.clientX, event.clientY); const mouseX = worldClickPos.x; const mouseY = worldClickPos.y;
-
     if (isPlacingAircraft) {
-        pendingAircraftLocation = { x: mouseX, y: mouseY }; isPlacingAircraft = false; canvas.style.cursor = 'grab'; addAircraftButton.classList.remove('placing'); addAircraftButton.textContent = 'Uçak Ekle'; addAircraftForm.style.display = 'block'; formErrorDiv.textContent = ''; inputCallsign.focus(); event.stopPropagation(); return;
+        pendingAircraftLocation = { x: mouseX, y: mouseY }; isPlacingAircraft = false; canvas.style.cursor = 'grab';
+        addAircraftButton.classList.remove('placing'); addAircraftButton.textContent = 'Uçak Ekle';
+        addAircraftForm.style.display = 'block'; formErrorDiv.textContent = ''; inputCallsign.focus(); event.stopPropagation(); return;
     }
-
     const clickThresholdWorld = 5 / zoom; let clickedAircraftCheck = null;
     for (const ac of aircrafts) { const distance = Math.sqrt(Math.pow(mouseX - ac.x, 2) + Math.pow(mouseY - ac.y, 2)); if (distance < clickThresholdWorld) { clickedAircraftCheck = ac; break; } }
     if (clickedAircraftCheck) {
@@ -2421,45 +2057,32 @@ canvas.addEventListener('click', function(event) {
         document.querySelectorAll('.aircraft-label.selected').forEach(el => el.classList.remove('selected'));
         if(selectedAircraft.labelElement) selectedAircraft.labelElement.classList.add('selected');
         updateTopCenterButtonStates();
-        console.log("Aircraft selected:", selectedAircraft.id);
     } else {
         if (selectedAircraft && !popup.contains(event.target)) {
-             selectedAircraft = null;
-             popup.style.display = 'none';
-             document.querySelectorAll('.aircraft-label.selected').forEach(el => el.classList.remove('selected'));
-             updateTopCenterButtonStates();
-             console.log("Selection cleared");
+            selectedAircraft = null; popup.style.display = 'none';
+            document.querySelectorAll('.aircraft-label.selected').forEach(el => el.classList.remove('selected'));
+            updateTopCenterButtonStates();
         }
     }
 });
 canvas.addEventListener('wheel', function(event) {
-    event.preventDefault();
-    const zoomIntensity = 0.1;
-    const oldZoom = zoom;
+    event.preventDefault(); const zoomIntensity = 0.1; const oldZoom = zoom;
     const delta = event.deltaY < 0 ? (1 + zoomIntensity) : (1 - zoomIntensity);
     zoom = Math.min(Math.max(oldZoom * delta, 0.2), 5.0);
-
     if (zoom !== oldZoom) {
         const rect = canvas.getBoundingClientRect();
-        const mouseXCanvas = event.clientX - rect.left;
-        const mouseYCanvas = event.clientY - rect.top;
-
+        const mouseXCanvas = event.clientX - rect.left; const mouseYCanvas = event.clientY - rect.top;
         const mouseXWorldBefore = (mouseXCanvas - panX) / oldZoom;
         const mouseYWorldBefore = (mouseYCanvas - panY) / oldZoom;
-
         panX = mouseXCanvas - mouseXWorldBefore * zoom;
         panY = mouseYCanvas - mouseYWorldBefore * zoom;
     }
 });
 
-
 // --- Buton Olayları ---
 fullscreenButton.addEventListener('click', () => {
-    if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch(err => console.error(`Tam ekran modu hatası: ${err.message}`));
-    } else {
-        if (document.exitFullscreen) { document.exitFullscreen().catch(err => console.error(`Tam ekran modundan çıkış hatası: ${err.message}`)); }
-    }
+    if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(err => console.error(`Tam ekran: ${err.message}`));
+    else if (document.exitFullscreen) document.exitFullscreen().catch(err => console.error(`Tam ekrandan çıkış: ${err.message}`));
 });
 vectorToggle.addEventListener('click', () => { showVectors = !showVectors; vectorToggle.textContent = `Speed Vector: ${showVectors ? 'AÇIK' : 'KAPALI'}`; vectorToggle.classList.toggle('active', showVectors); });
 document.querySelectorAll('#vectorControls button[data-minutes]').forEach(btn => {
@@ -2476,31 +2099,29 @@ measureButton.addEventListener('click', () => {
         isPlacingAircraft = false; addAircraftButton.classList.remove('placing'); addAircraftButton.textContent = 'Uçak Ekle';
         addAircraftForm.style.display = 'none'; pendingAircraftLocation = null; selectedAircraft = null; popup.style.display = 'none';
         document.querySelectorAll('.aircraft-label.selected').forEach(el => el.classList.remove('selected'));
-        updateTopCenterButtonStates(); tempMeasurementLabel.style.display = 'none';
+        updateTopCenterButtonStates(); if (tempMeasurementLabel) tempMeasurementLabel.style.display = 'none';
         if(runwayCenterHoverText) runwayCenterHoverText.style.display = 'none';
-    }
-    else {
+    } else {
         measureButton.classList.remove('measuring'); measureButton.textContent = 'Ölçüm Yap'; canvas.style.cursor = isPlacingAircraft ? 'crosshair' : 'grab';
         measurementStartPoint = null; hoveredAircraftForMeasure = null; hoveredRunwayCenterForMeasure = false;
-        tempMeasurementLabel.style.display = 'none';
+        if (tempMeasurementLabel) tempMeasurementLabel.style.display = 'none';
     }
 });
 addAircraftButton.addEventListener('click', () => {
     if (isPlacingAircraft) {
         isPlacingAircraft = false; canvas.style.cursor = 'grab'; addAircraftButton.classList.remove('placing'); addAircraftButton.textContent = 'Uçak Ekle'; pendingAircraftLocation = null;
-    }
-    else {
+    } else {
         isPlacingAircraft = true; canvas.style.cursor = 'crosshair'; addAircraftButton.classList.add('placing'); addAircraftButton.textContent = 'Yer Seç (İptal Et)';
         isMeasuring = false; measureButton.classList.remove('measuring'); measureButton.textContent = 'Ölçüm Yap';
         measurementStartPoint = null; hoveredAircraftForMeasure = null; hoveredRunwayCenterForMeasure = false;
         selectedAircraft = null; popup.style.display = 'none'; addAircraftForm.style.display = 'none'; pendingAircraftLocation = null;
         document.querySelectorAll('.aircraft-label.selected').forEach(el => el.classList.remove('selected'));
-        updateTopCenterButtonStates(); tempMeasurementLabel.style.display = 'none';
+        updateTopCenterButtonStates(); if (tempMeasurementLabel) tempMeasurementLabel.style.display = 'none';
         if(runwayCenterHoverText) runwayCenterHoverText.style.display = 'none';
     }
 });
 inputType.addEventListener('change', function() {
-    const selectedType = this.value; if (defaultAircraftSpeeds[selectedType]) { inputSpeed.value = defaultAircraftSpeeds[selectedType]; }
+    const selectedType = this.value; if (defaultAircraftSpeeds[selectedType]) inputSpeed.value = defaultAircraftSpeeds[selectedType];
 });
 submitNewAircraftBtn.addEventListener('click', () => {
     formErrorDiv.textContent = ''; const callsign = inputCallsign.value.trim().toUpperCase(); const type = inputType.value;
@@ -2522,12 +2143,11 @@ submitNewAircraftBtn.addEventListener('click', () => {
         id: callsign, x: pendingAircraftLocation.x, y: pendingAircraftLocation.y, heading: heading, targetHeading: heading, speedKTS: speed, altitude: altitude, targetAltitude: altitude,
         rateOfDescent: 0, rateOfClimb: 0, isTakingOff: false, takeoffRunway: null, isIntercepting: false, isHandedOffToTower: false, showVector: false, labelElement: null, labelX: 0, labelY: 0, labelDragged: true,
         bankAngle: 0, maxBankAngle: 25, commandedTurnDirection: 0, turning: false, type: type, departureTargetFL: departureFL, showInfoPanel: false,
-        draggedLabelDeltaX: 0, draggedLabelDeltaY: 0, initialPosSet: true
+        draggedLabelDeltaX: 0, draggedLabelDeltaY: 0, lastHeadingUpdateTime: 0, initialPosSet: true
     };
     aircrafts.push(newAircraft); addAircraftForm.style.display = 'none'; pendingAircraftLocation = null;
     inputCallsign.value = ''; inputType.value = aircraftTypes[0] || ''; inputHeading.value = '';
-    inputSpeed.value = defaultAircraftSpeeds[inputType.value] || '';
-    inputAltitude.value = ''; inputDepartureFL.value = '';
+    inputSpeed.value = defaultAircraftSpeeds[inputType.value] || ''; inputAltitude.value = ''; inputDepartureFL.value = '';
 });
 cancelNewAircraftBtn.addEventListener('click', () => {
     addAircraftForm.style.display = 'none'; pendingAircraftLocation = null;
@@ -2536,51 +2156,50 @@ cancelNewAircraftBtn.addEventListener('click', () => {
     inputSpeed.value = defaultAircraftSpeeds[inputType.value] || ''; inputAltitude.value = ''; inputDepartureFL.value = ''; formErrorDiv.textContent = '';
 });
 speedButton.addEventListener('click', () => { speedControlContainer.style.display = speedControlContainer.style.display === 'block' ? 'none' : 'block'; });
-speedSlider.addEventListener('input', (e) => {
-    const index = parseInt(e.target.value); gameSpeedMultiplier = speedMultipliers[index];
-    speedButton.textContent = `Hız: ${gameSpeedMultiplier}x`;
-});
-// playPauseButton olay dinleyicisi
+// speedSlider event listener zaten en başta tanımlı.
+
 playPauseButton.addEventListener('click', () => {
     isPaused = !isPaused;
     playPauseButton.textContent = isPaused ? 'Oynat' : 'Durdur';
     playPauseButton.classList.toggle('paused', isPaused);
-    toggleTimer(isPaused);
+    toggleTimer(isPaused); // toggleTimer'a isPaused durumunu gönder
+    if (!isPaused && !animationFrameId) { // Eğer devam ediliyorsa ve loop durmuşsa yeniden başlat
+        lastTime = performance.now(); // lastTime'ı güncelle
+        gameLoop(lastTime);
+    }
 });
-takeoffButton.addEventListener('click', () => {
-    takeoffOptionsContainer.style.display = takeoffOptionsContainer.style.display === 'flex' ? 'none' : 'flex';
-});
+takeoffButton.addEventListener('click', () => { takeoffOptionsContainer.style.display = takeoffOptionsContainer.style.display === 'flex' ? 'none' : 'flex'; });
 document.querySelectorAll('.takeoff-option-btn.runway-btn').forEach(btn => {
     btn.addEventListener('click', function() {
-        const runway = this.dataset.runway;
-        const select = this.parentElement.querySelector('.waypoint-select');
-        const waypointName = select.value || null;
-        if (!waypointName) {
-            alert('Lütfen bir waypoint seçin!');
-            return;
-        }
-        launchAircraft(runway, waypointName);
-        takeoffOptionsContainer.style.display = 'none';
+        const runway = this.dataset.runway; const select = this.parentElement.querySelector('.waypoint-select');
+        const waypointName = select.value || null; if (!waypointName) { alert('Lütfen bir waypoint seçin!'); return; }
+        launchAircraft(runway, waypointName); takeoffOptionsContainer.style.display = 'none';
     });
 });
-
 interceptButton033.addEventListener('click', () => {
     if (selectedAircraft && !interceptButton033.disabled) {
-        selectedAircraft.isIntercepting = true; selectedAircraft.targetHeading = INTERCEPT_TARGET_COURSE_033;
+        selectedAircraft.isIntercepting = true; selectedAircraft.interceptCourse = INTERCEPT_TARGET_COURSE_033; // Hangi LOC'a intercept ettiğini sakla
+        // Intercept açısını hesapla (örneğin 30-45 derece)
+        let interceptAngle = INTERCEPT_TARGET_COURSE_033 - 45; // Sola 45 derece
+        // Uçağın pozisyonuna göre daha akıllı bir intercept açısı da hesaplanabilir.
+        // Şimdilik sabit bir açı kullanıyoruz.
+        selectedAircraft.targetHeading = (Math.round(interceptAngle) + 360) % 360;
         selectedAircraft.turning = true; selectedAircraft.commandedTurnDirection = 0; selectedAircraft.isHandedOffToTower = false;
         updateTopCenterButtonStates(); popup.style.display = 'none';
     }
 });
 interceptButton21L.addEventListener('click', () => {
     if (selectedAircraft && !interceptButton21L.disabled) {
-        selectedAircraft.isIntercepting = true; selectedAircraft.targetHeading = INTERCEPT_TARGET_COURSE_21L;
+        selectedAircraft.isIntercepting = true; selectedAircraft.interceptCourse = INTERCEPT_TARGET_COURSE_21L;
+        let interceptAngle = INTERCEPT_TARGET_COURSE_21L + 45; // Sağa 45 derece
+        selectedAircraft.targetHeading = (Math.round(interceptAngle) + 360) % 360;
         selectedAircraft.turning = true; selectedAircraft.commandedTurnDirection = 0; selectedAircraft.isHandedOffToTower = false;
         updateTopCenterButtonStates(); popup.style.display = 'none';
     }
 });
 towerButton.addEventListener('click', () => {
     if (selectedAircraft && !towerButton.disabled) {
-        if (selectedAircraft.isHandedOffToTower) { selectedAircraft.isHandedOffToTower = false; }
+        if (selectedAircraft.isHandedOffToTower) selectedAircraft.isHandedOffToTower = false;
         else { selectedAircraft.isHandedOffToTower = true; selectedAircraft.isIntercepting = false; selectedAircraft.commandedTurnDirection = 0; }
         updateTopCenterButtonStates(); popup.style.display = 'none';
     }
@@ -2589,7 +2208,7 @@ removeButton.addEventListener('click', () => {
     if (selectedAircraft && !removeButton.disabled) {
         const indexToRemove = aircrafts.findIndex(ac => ac.id === selectedAircraft.id);
         if (indexToRemove > -1) {
-            if (selectedAircraft.labelElement) { selectedAircraft.labelElement.remove(); }
+            if (selectedAircraft.labelElement) selectedAircraft.labelElement.remove();
             aircrafts.splice(indexToRemove, 1); selectedAircraft = null;
             updateTopCenterButtonStates(); popup.style.display = 'none';
         }
@@ -2597,98 +2216,131 @@ removeButton.addEventListener('click', () => {
 });
 
 function updateTopCenterButtonStates() {
-    let canIntercept033 = false; let canIntercept21L = false; let canTower = false; let canRemove = false;
+    let canBeEnabled033 = false; // Normal şartlarda intercept için uygun mu?
+    let canBeEnabled21L = false; // Normal şartlarda intercept için uygun mu?
+    let canTower = false;
+    let canRemove = false;
+
+    const btn033 = document.getElementById('interceptButton033');
+    const btn21L = document.getElementById('interceptButton21L');
+    const indicator033 = btn033 ? btn033.querySelector('.intercept-indicator') : null;
+    const indicator21L = btn21L ? btn21L.querySelector('.intercept-indicator') : null;
+
     if (selectedAircraft) {
-        canRemove = true; canTower = true;
+        canRemove = true;
+        canTower = true;
         towerButton.classList.toggle('handed-off', selectedAircraft.isHandedOffToTower);
-        if (!selectedAircraft.isHandedOffToTower && !selectedAircraft.isIntercepting) {
-            const heading = selectedAircraft.heading;
-            const locRad033 = toRadians(INTERCEPT_TARGET_COURSE_033);
-            const lineEndX033 = centerX + Math.sin(locRad033) * nmToWorldPixels(INTERCEPT_MAX_DIST_NM * 2); const lineEndY033 = centerY - Math.cos(locRad033) * nmToWorldPixels(INTERCEPT_MAX_DIST_NM * 2);
-            const distToLoc033 = pointLineDistance(selectedAircraft.x, selectedAircraft.y, centerX, centerY, lineEndX033, lineEndY033);
-            const distToLocNM033 = worldPixelsToNm(distToLoc033);
-            const isInAngleRange033 = (heading >= 348 && heading <= 359.9) || (heading >= 0 && heading <= 78);
-            if (distToLocNM033 <= INTERCEPT_MAX_DIST_NM && isInAngleRange033) { canIntercept033 = true; }
-            const locRad21L = toRadians(INTERCEPT_TARGET_COURSE_21L);
-            const lineEndX21L = centerX + Math.sin(locRad21L) * nmToWorldPixels(INTERCEPT_MAX_DIST_NM * 2); const lineEndY21L = centerY - Math.cos(locRad21L) * nmToWorldPixels(INTERCEPT_MAX_DIST_NM * 2);
-            const distToLoc21L = pointLineDistance(selectedAircraft.x, selectedAircraft.y, centerX, centerY, lineEndX21L, lineEndY21L);
-            const distToLocNM21L = worldPixelsToNm(distToLoc21L);
-            const isInAngleRange21L = heading >= INTERCEPT_ANGLE_MIN_21L && heading <= INTERCEPT_ANGLE_MAX_21L;
-            if (distToLocNM21L <= INTERCEPT_MAX_DIST_NM && isInAngleRange21L) { canIntercept21L = true; }
+
+        const heading = selectedAircraft.heading;
+        const generalInterceptPossible = !selectedAircraft.isHandedOffToTower;
+
+        // LOC 033 için normal etkinleştirme koşulları
+        const isInAngleRange033 = (heading >= 349 && heading < 360) || (heading >= 0 && heading <= 76);
+        const distToLocNM033 = worldPixelsToNm(pointLineDistance(selectedAircraft.x, selectedAircraft.y, centerX, centerY,
+            centerX + Math.sin(toRadians(INTERCEPT_TARGET_COURSE_033)) * nmToWorldPixels(localizerLengthNM + 5),
+            centerY - Math.cos(toRadians(INTERCEPT_TARGET_COURSE_033)) * nmToWorldPixels(localizerLengthNM + 5)));
+        if (generalInterceptPossible && distToLocNM033 <= INTERCEPT_MAX_DIST_NM && isInAngleRange033) {
+            canBeEnabled033 = true;
         }
-    } else { towerButton.classList.remove('handed-off'); }
-    interceptButton033.disabled = !canIntercept033; interceptButton21L.disabled = !canIntercept21L;
-    towerButton.disabled = !canTower; removeButton.disabled = !canRemove;
+
+        // LOC 21L için normal etkinleştirme koşulları
+        const isInAngleRange21L = (heading >= 169 && heading <= 256);
+        const distToLocNM21L = worldPixelsToNm(pointLineDistance(selectedAircraft.x, selectedAircraft.y, centerX, centerY,
+            centerX + Math.sin(toRadians(INTERCEPT_TARGET_COURSE_21L)) * nmToWorldPixels(localizerLengthNM + 5),
+            centerY - Math.cos(toRadians(INTERCEPT_TARGET_COURSE_21L)) * nmToWorldPixels(localizerLengthNM + 5)));
+        if (generalInterceptPossible && distToLocNM21L <= INTERCEPT_MAX_DIST_NM && isInAngleRange21L) {
+            canBeEnabled21L = true;
+        }
+
+        // Buton 033'ün durumunu ayarla
+        if (btn033 && indicator033) {
+            if (selectedAircraft.isIntercepting && selectedAircraft.interceptCourse === INTERCEPT_TARGET_COURSE_033) {
+                btn033.disabled = false; // Aktif intercept'i iptal etmek için her zaman etkin
+                btn033.classList.add('intercepting');
+                indicator033.textContent = '✓';
+            } else {
+                btn033.disabled = !canBeEnabled033; // Normal koşullara göre etkin/devre dışı
+                btn033.classList.remove('intercepting');
+                indicator033.textContent = '';
+            }
+        }
+
+        // Buton 21L'nin durumunu ayarla
+        if (btn21L && indicator21L) {
+            if (selectedAircraft.isIntercepting && selectedAircraft.interceptCourse === INTERCEPT_TARGET_COURSE_21L) {
+                btn21L.disabled = false; // Aktif intercept'i iptal etmek için her zaman etkin
+                btn21L.classList.add('intercepting');
+                indicator21L.textContent = '✓';
+            } else {
+                btn21L.disabled = !canBeEnabled21L; // Normal koşullara göre etkin/devre dışı
+                btn21L.classList.remove('intercepting');
+                indicator21L.textContent = '';
+            }
+        }
+
+        // Bir LOC'a aktif intercept varsa, diğer LOC butonunu devre dışı bırak
+        if (selectedAircraft.isIntercepting) {
+            if (selectedAircraft.interceptCourse === INTERCEPT_TARGET_COURSE_033 && btn21L) {
+                btn21L.disabled = true; // Diğeri aktifken bu kesinlikle devre dışı
+                btn21L.classList.remove('intercepting');
+                if(indicator21L) indicator21L.textContent = '';
+            } else if (selectedAircraft.interceptCourse === INTERCEPT_TARGET_COURSE_21L && btn033) {
+                btn033.disabled = true; // Diğeri aktifken bu kesinlikle devre dışı
+                btn033.classList.remove('intercepting');
+                if(indicator033) indicator033.textContent = '';
+            }
+        }
+
+    } else { // Seçili uçak yoksa tüm intercept butonları devre dışı
+        towerButton.classList.remove('handed-off');
+        if (btn033 && indicator033) {
+            btn033.disabled = true;
+            btn033.classList.remove('intercepting');
+            indicator033.textContent = '';
+        }
+        if (btn21L && indicator21L) {
+            btn21L.disabled = true;
+            btn21L.classList.remove('intercepting');
+            indicator21L.textContent = '';
+        }
+    }
+
+    towerButton.disabled = !canTower;
+    removeButton.disabled = !canRemove;
 }
 
 function launchAircraft(runway, waypointName) {
-    departureCounter++;
-    const callsign = `DEP${departureCounter.toString().padStart(3, '0')}`;
+    departureCounter++; const callsign = `DEP${departureCounter.toString().padStart(3, '0')}`;
     const type = aircraftTypes[Math.floor(Math.random() * aircraftTypes.length)];
-    const speed = defaultAircraftSpeeds[type] || 250;
-    const initialAltitude = 3000;
+    const speed = defaultAircraftSpeeds[type] || 250; const initialAltitude = 3000;
     const possibleTargetFLs = [180, 190, 200, 210, 250, 260, 280];
     const randomFLIndex = Math.floor(Math.random() * possibleTargetFLs.length);
     const selectedTargetFL = possibleTargetFLs[randomFLIndex];
     const targetAltitudeFeet = selectedTargetFL * 100;
     const climbRate = aircraftPerformanceROC[type] || DEFAULT_CLIMB_RATE;
-    let initialHeading = 0;
-    if (runway === '03R') {
-        initialHeading = 33;
-    } else if (runway === '21L') {
-        initialHeading = 213;
-    } else {
-        initialHeading = 33;
-    }
-
+    let initialHeading = (runway === '03R') ? 33 : ((runway === '21L') ? 213 : 33);
     const newAircraft = {
-        id: callsign,
-        x: centerX,
-        y: centerY,
-        heading: initialHeading,
-        targetHeading: initialHeading,
-        speedKTS: speed,
-        altitude: initialAltitude,
-        targetAltitude: targetAltitudeFeet,
-        rateOfDescent: 0,
-        rateOfClimb: climbRate,
-        isTakingOff: true,
-        takeoffRunway: runway,
-        isIntercepting: false,
-        isHandedOffToTower: false,
-        showVector: false,
-        labelElement: null,
-        labelX: 0,
-        labelY: 0,
-        labelDragged: true,
-        bankAngle: 0,
-        maxBankAngle: 25,
-        commandedTurnDirection: 0,
-        turning: false,
-        type: type,
-        departureTargetFL: selectedTargetFL,
-        showInfoPanel: false,
-        draggedLabelDeltaX: 0,
-        draggedLabelDeltaY: 0,
-        initialPosSet: true,
-        targetWaypoint: waypointName || null // Seçilen waypoint
+        id: callsign, x: centerX, y: centerY, heading: initialHeading, targetHeading: initialHeading,
+        speedKTS: speed, altitude: initialAltitude, targetAltitude: targetAltitudeFeet,
+        rateOfDescent: 0, rateOfClimb: climbRate, isTakingOff: true, takeoffRunway: runway,
+        isIntercepting: false, isHandedOffToTower: false, showVector: false, labelElement: null,
+        labelX: 0, labelY: 0, labelDragged: true, bankAngle: 0, maxBankAngle: 25,
+        commandedTurnDirection: 0, turning: false, type: type, departureTargetFL: selectedTargetFL,
+        showInfoPanel: false, draggedLabelDeltaX: 0, draggedLabelDeltaY: 0,
+        lastHeadingUpdateTime: 0, initialPosSet: true, targetWaypoint: waypointName || null
     };
     aircrafts.push(newAircraft);
-    console.log(`Kalkış yapıldı: ${newAircraft.id} (${newAircraft.type}), Pist: ${runway}, Başlangıç Yönü: ${initialHeading}°, İrtifa: FL${initialAltitude/100}, Hedef FL: FL${selectedTargetFL}, ROC: ${climbRate}ft/min, Hedef Waypoint: ${waypointName || 'Yok'}`);
 }
 
 let animationFrameId = null;
 function gameLoop(currentTime) {
     animationFrameId = requestAnimationFrame(gameLoop);
-
     if (isPaused) {
-        lastTime = currentTime;
-        return;
+        // lastTime = currentTime; // Duraklatıldığında lastTime'ı güncellemeye devam etme
+        return; // Eğer duraklatılmışsa, çizim ve güncelleme yapma
     }
-
-    const deltaTime = (currentTime - lastTime) / 1000;
+    const deltaTime = (currentTime - lastTime) / 1000; // Saniye cinsinden
     lastTime = currentTime;
-
     updateAircrafts(deltaTime);
     drawRadar();
 }
@@ -2700,47 +2352,48 @@ function initializeApp() {
     });
     if (aircraftTypes.length > 0) {
         typeDropdown.value = aircraftTypes[0];
-        if (defaultAircraftSpeeds[aircraftTypes[0]]) { inputSpeed.value = defaultAircraftSpeeds[aircraftTypes[0]]; }
+        if (defaultAircraftSpeeds[aircraftTypes[0]]) inputSpeed.value = defaultAircraftSpeeds[aircraftTypes[0]];
     }
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
-    vectorToggle.classList.toggle('active', showVectors); btnLoc21L.classList.toggle('active', showLocalizerLeft); btnLocRight.classList.toggle('active', showLocalizerRight);
+    vectorToggle.classList.toggle('active', showVectors);
+    btnLoc21L.classList.toggle('active', showLocalizerLeft);
+    btnLocRight.classList.toggle('active', showLocalizerRight);
     updateTopCenterButtonStates();
     const initialSpeedIndex = speedMultipliers.findIndex(s => s === gameSpeedMultiplier);
-    speedSlider.value = initialSpeedIndex !== -1 ? initialSpeedIndex : 3;
+    speedSlider.value = initialSpeedIndex !== -1 ? initialSpeedIndex : 3; // 1x hız için index 3
     speedButton.textContent = `Hız: ${gameSpeedMultiplier}x`;
-    playPauseButton.textContent = isPaused ? 'Devam' : 'Durdur';
+    playPauseButton.textContent = isPaused ? 'Oynat' : 'Durdur'; // 'Devam' yerine 'Oynat'
     playPauseButton.classList.toggle('paused', isPaused);
-    tempMeasurementLabel.style.display = 'none';
-    takeoffOptionsContainer.style.display = 'none';
+    if (tempMeasurementLabel) tempMeasurementLabel.style.display = 'none';
+    if (takeoffOptionsContainer) takeoffOptionsContainer.style.display = 'none';
     lastTime = performance.now();
-    gameLoop(lastTime);
+    startGameTimer(); // Zamanlayıcıyı başlat
+    gameLoop(lastTime); // Oyun döngüsünü başlat
 }
 
 const generateScenarioBtn = document.getElementById('generateScenarioBtn');
-if (generateScenarioBtn) {
-    generateScenarioBtn.addEventListener('click', showRunwaySelection);
-}
+if (generateScenarioBtn) generateScenarioBtn.addEventListener('click', showRunwaySelection);
+if (selectRunway03RBtn) selectRunway03RBtn.addEventListener('click', () => { initializeScenarioGeneration('03R'); });
+if (selectRunway21LBtn) selectRunway21LBtn.addEventListener('click', () => { initializeScenarioGeneration('21L'); });
+if (cancelRunwaySelectionBtn) cancelRunwaySelectionBtn.addEventListener('click', () => { hideRunwaySelection(); });
 
-if (selectRunway03RBtn) {
-    selectRunway03RBtn.addEventListener('click', () => {
-        initializeScenarioGeneration('03R');
-    });
-}
-
-if (selectRunway21LBtn) {
-    selectRunway21LBtn.addEventListener('click', () => {
-        initializeScenarioGeneration('21L');
-    });
-}
-
-if (cancelRunwaySelectionBtn) {
-    cancelRunwaySelectionBtn.addEventListener('click', () => {
-        hideRunwaySelection();
-        console.log("Pist seçimi kullanıcı tarafından iptal edildi.");
-    });
-}
 initializeApp();
 </script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 </body>
 </html>
