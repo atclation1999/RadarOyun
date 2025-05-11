@@ -1385,36 +1385,106 @@ function hideRunwaySelection() {
 }
 
 function initializeScenarioGeneration(activeRunway) {
-    hideRunwaySelection();
+   
+    // --- YENİ EKLENEN SATIR: gameSpeedMultiplier'ı slider'dan yeniden oku ---
+    gameSpeedMultiplier = speedMultipliers[parseInt(speedSlider.value)];
+    // speedFactor'ı da senkronize et (eğer başka yerlerde speedFactor kullanılıyorsa)
+    speedFactor = gameSpeedMultiplier;
+
+
+    hideRunwaySelection(); // Seçim yapıldıktan sonra modalı gizle
+
+    // --- 1. ZAMANLAYICIYI SIFIRLA VE 10:00:00'DAN BAŞLAT ---
+    elapsedTime = 36000; // 10 saat = 10 * 60 * 60 saniye
+
+    // Mevcut zamanlayıcı interval'ini durdur (eğer çalışıyorsa)
+    if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null; // ID'yi temizle
+    }
+
+    // Oyunun duraklatılmış olma durumunu kaldır (yeni senaryo başladığında oyun çalışsın)
+    if (isPaused) {
+        isPaused = false;
+        playPauseButton.textContent = 'Durdur';
+        playPauseButton.classList.remove('paused');
+        // lastTime'ın oyun döngüsü için güncellenmesi gerekebilir,
+        // ve eğer animasyon frame'i durmuşsa yeniden başlatılması.
+        // Bu, genellikle toggleTimer(false) içinde veya benzer bir yerde yapılır.
+        // Şimdilik, startGameTimer'ın !isPaused durumuna göre interval'i başlatacağını varsayıyoruz.
+    }
+
+    // Zamanlayıcıyı yeni elapsedTime değeriyle hemen başlat ve DOM'da göster
+    // startGameTimer fonksiyonu, isPaused false ise interval'i de başlatacaktır.
+    startGameTimer();
+    // --- ZAMANLAYICI SIFIRLAMA SONU ---
+
+    // 2. ÖNCEKİ UÇAK SPAWN ZAMANLAYICILARINI TEMİZLE
     if (activeScenarioTimeouts && activeScenarioTimeouts.length > 0) {
         activeScenarioTimeouts.forEach(timeoutId => clearTimeout(timeoutId));
+        activeScenarioTimeouts = []; // Diziyi de boşaltmak iyi bir pratik
     }
-    activeScenarioTimeouts = [];
-    aircrafts.forEach(ac => { if (ac.labelElement) ac.labelElement.remove(); });
-    aircrafts.length = 0; selectedAircraft = null;
-    updateTopCenterButtonStates(); if (popup) popup.style.display = 'none';
-    scenarioAircraftIdCounter = 0;
-    if (isPaused) {
-        isPaused = false; playPauseButton.textContent = 'Durdur';
-        playPauseButton.classList.remove('paused'); toggleTimer(false);
-        lastTime = performance.now();
-        if (!animationFrameId) gameLoop(lastTime);
+
+    // Loglama (opsiyonel, hata ayıklama için)
+    console.log(`YENİ SENARYO BAŞLADI - Zaman: ${formatTime(elapsedTime)}, Oyun Hızı (gameSpeedMultiplier): ${gameSpeedMultiplier}x`);
+
+    // 3. Mevcut uçakları ve etiketlerini temizle
+    aircrafts.forEach(ac => {
+        if (ac.labelElement) ac.labelElement.remove();
+    });
+    aircrafts.length = 0;
+    selectedAircraft = null;
+    updateTopCenterButtonStates(); // Buton durumlarını güncelle
+    if (popup) popup.style.display = 'none'; // Açık popup varsa kapat
+    scenarioAircraftIdCounter = 0; // Senaryoya özel sayaç sıfırlanır
+
+    // 4. Oyun döngüsünün çalıştığından emin ol (eğer duraklatılmışsa ve yeniden başlatıldıysa)
+    // Eğer isPaused true iken buraya gelindiyse ve false yapıldıysa, gameLoop'un devam etmesi gerekir.
+    if (!isPaused) { // Bu koşul yukarıda false yapıldığı için her zaman true olacak.
+        lastTime = performance.now(); // Oyun döngüsü için lastTime'ı güncelle
+        if (!animationFrameId && gameLoop) { // gameLoop tanımlıysa ve animationFrameId yoksa (yani durmuşsa)
+            // gameLoop(lastTime); // Yeniden başlat. Eğer gameLoop zaten requestAnimationFrame ile çalışıyorsa,
+                               // isPaused = false; olması yeterli olabilir.
+            // playPauseButton olay dinleyicisindeki mantık zaten bunu handle ediyor olabilir.
+            // En güvenlisi, eğer oyun durmuşsa ve devam ettiriliyorsa, game loop'u da tetiklemek.
+            // Ancak, toggleTimer(false) çağrısı yapıyorsak bu zaten içerebilir.
+            // Şimdilik, toggleTimer'ı doğrudan çağırmadık, startGameTimer kullandık.
+            // Bu yüzden, eğer oyun döngüsü isPaused'a bağlıysa, isPaused = false yapmak yeterli.
+            // Eğer ayrıca başlatmak gerekiyorsa:
+            if (!animationFrameId) { // Eğer gameLoop bir şekilde durmuşsa
+                 requestAnimationFrame(gameLoop); // Veya gameLoop(performance.now());
+            }
+        }
     }
+
+
+    // --- PİST VE HEDEF NOKTA AYARLARI ---
     const localizerCourse = activeRunway === '03R' ? INTERCEPT_TARGET_COURSE_033 : INTERCEPT_TARGET_COURSE_21L;
-    let targetPointAngleDeg = (localizerCourse + 180) % 360;
+    let targetPointAngleDeg;
+    if (activeRunway === '03R') {
+        targetPointAngleDeg = (localizerCourse + 180) % 360;
+    } else { // 21L
+        targetPointAngleDeg = (localizerCourse + 180) % 360;
+    }
     const targetPointAngleRad = toRadians(targetPointAngleDeg);
     const targetPointDistanceNM = 12;
     const targetPointX = centerX + Math.sin(targetPointAngleRad) * nmToWorldPixels(targetPointDistanceNM);
     const targetPointY = centerY - Math.cos(targetPointAngleRad) * nmToWorldPixels(targetPointDistanceNM);
 
-    const numArrivals = 5; const arrivalSpawnWindowSeconds = 60;
+    // --- İNİŞ TRAFİĞİ (Arrivals) ---
+    const numArrivals = 5;
+    const arrivalSpawnWindowSeconds = 60;
     let availableWaypointsForScenario = [...waypoints].sort(() => 0.5 - Math.random());
-    const baseWaypoints = [...waypoints];
+    const baseWaypoints = [...waypoints]; // Orijinal waypoints listesini kopyala
+
     if (availableWaypointsForScenario.length < 4 && baseWaypoints.length > 0) {
+        console.warn("İniş senaryosu için yeterli sayıda farklı waypoint yok. Mevcut waypointler tekrar kullanılacak.");
         while(availableWaypointsForScenario.length < 4 && baseWaypoints.length > 0) {
             availableWaypointsForScenario.push(baseWaypoints[Math.floor(Math.random() * baseWaypoints.length)]);
         }
-    } else if (baseWaypoints.length === 0) { console.error("Hiç waypoint tanımlı değil."); }
+    } else if (baseWaypoints.length === 0) {
+         console.error("Hiç waypoint tanımlı değil. İniş trafiği waypointler üzerinden üretilemiyor.");
+    }
 
     let arrivalWaypointsSelection = [];
     if (availableWaypointsForScenario.length >= 4) {
@@ -1439,73 +1509,104 @@ function initializeScenarioGeneration(activeRunway) {
         const spawnX = centerX + Math.sin(wpAngleRad) * nmToWorldPixels(waypoint.distanceNM);
         const spawnY = centerY - Math.cos(wpAngleRad) * nmToWorldPixels(waypoint.distanceNM);
         const bearingToTargetPoint = calculateBearing(spawnX, spawnY, targetPointX, targetPointY);
-        let baseFL = Math.floor(Math.random() * (22 - 13 + 1)) + 13;
-        let altitudeFL = baseFL * 10;
+        let baseFLArr = Math.floor(Math.random() * (22 - 13 + 1)) + 13;
+        let altitudeFLArr = baseFLArr * 10;
         const waypointKey = waypoint.name;
         if (firstFLForWaypoint[waypointKey] === undefined) {
-            firstFLForWaypoint[waypointKey] = altitudeFL;
+            firstFLForWaypoint[waypointKey] = altitudeFLArr;
         } else {
             let attempts = 0; const originalFL = firstFLForWaypoint[waypointKey];
-            while (altitudeFL === originalFL && attempts < 20) {
-                baseFL = Math.floor(Math.random() * (22 - 13 + 1)) + 13;
-                altitudeFL = baseFL * 10; attempts++;
+            while (altitudeFLArr === originalFL && attempts < 20) {
+                baseFLArr = Math.floor(Math.random() * (22 - 13 + 1)) + 13;
+                altitudeFLArr = baseFLArr * 10; attempts++;
             }
         }
-        const altitudeFeet = altitudeFL * 100;
-        const acType = aircraftTypes[Math.floor(Math.random() * aircraftTypes.length)];
-        scenarioAircraftIdCounter++;
-        const callsign = (callsignPrefixes[Math.floor(Math.random() * callsignPrefixes.length)]) + (100 + scenarioAircraftIdCounter);
+        const altitudeFeetArr = altitudeFLArr * 100;
+        const acTypeArr = aircraftTypes[Math.floor(Math.random() * aircraftTypes.length)];
+        const realTimeDelayArrMs = spawnTimeSeconds * 1000 / gameSpeedMultiplier;
+
         const timeoutIdArrival = setTimeout(() => {
+            const currentElapsedTimeAtSpawn = elapsedTime;
+            scenarioAircraftIdCounter++;
+            const callsignArr = (callsignPrefixes[Math.floor(Math.random() * callsignPrefixes.length)]) + (100 + scenarioAircraftIdCounter);
             const aircraft = {
-                id: callsign, x: spawnX, y: spawnY,
+                id: callsignArr, x: spawnX, y: spawnY,
                 heading: Math.round(bearingToTargetPoint), targetHeading: Math.round(bearingToTargetPoint),
-                speedKTS: defaultAircraftSpeeds[acType] || 230,
-                altitude: altitudeFeet, targetAltitude: altitudeFeet,
+                speedKTS: defaultAircraftSpeeds[acTypeArr] || 230, altitude: altitudeFeetArr, targetAltitude: altitudeFeetArr,
                 rateOfDescent: 0, rateOfClimb: 0, isTakingOff: false, takeoffRunway: null,
-                isIntercepting: false, isHandedOffToTower: false, showVector: false,
-                labelElement: null, labelX: 0, labelY: 0, labelDragged: true, bankAngle: 0, maxBankAngle: 25,
-                commandedTurnDirection: 0, turning: false, type: acType, departureTargetFL: null,
+                isIntercepting: false, isHandedOffToTower: false, showVector: false, labelElement: null,
+                labelX: 0, labelY: 0, labelDragged: true, bankAngle: 0, maxBankAngle: 25,
+                commandedTurnDirection: 0, turning: false, type: acTypeArr, departureTargetFL: null,
                 showInfoPanel: false, draggedLabelDeltaX: 0, draggedLabelDeltaY: 0,
                 lastHeadingUpdateTime: 0, initialPosSet: true, targetWaypoint: null
             };
             aircrafts.push(aircraft);
-        }, spawnTimeSeconds * 1000 / gameSpeedMultiplier);
+            console.log(`ARRIVAL: Uçak ${aircraft.id} oyuna eklendi. Oyun Zamanı: ${formatTime(currentElapsedTimeAtSpawn)}`);
+        }, realTimeDelayArrMs);
         activeScenarioTimeouts.push(timeoutIdArrival);
     }
 
-    const departureSpawnTimes = [Math.random() * 60, 140 + (Math.random() * 60)];
+    // --- KALKIŞ TRAFİĞİ (Departures) ---
+	// kalkış zamanlaması
+    const departureSpawnTimes = [
+        Math.random() * 30,
+        120 + (Math.random() * 40)
+    ];
     let waypointsForDeparture = [...waypoints].sort(() => 0.5 - Math.random());
     if (waypointsForDeparture.length === 0 && baseWaypoints.length > 0) {
         waypointsForDeparture.push(baseWaypoints[Math.floor(Math.random() * baseWaypoints.length)]);
     }
+
+    console.log("--- Kalkış Uçakları Zamanlaması (Yeni senaryo başlangıcına göre) ---");
+    departureSpawnTimes.forEach((spawnDelay, index) => {
+        const aircraftNum = index + 1;
+        const realTimeDelayForTimeout = spawnDelay * 1000 / gameSpeedMultiplier;
+        // elapsedTime burada sıfırlanmış 10:00:00'a göre hesap yapar.
+        const expectedGameTimeAtSpawn = elapsedTime + spawnDelay; 
+
+        console.log(`Kalkış Uçağı #${aircraftNum}:`);
+        console.log(`  Planlanan Kalkış Gecikmesi (Oyun Zamanı): ${spawnDelay.toFixed(1)}s (yeni senaryo zamanına göre)`);
+        console.log(`  Kullanılan gameSpeedMultiplier: ${gameSpeedMultiplier}`);
+        console.log(`  Hesaplanan Gerçek Zaman Gecikmesi (setTimeout için): ${realTimeDelayForTimeout.toFixed(0)}ms`);
+        console.log(`  Bu uçağın kalkışında BEKLENEN Oyun Zamanı (HH:MM:SS): ${formatTime(expectedGameTimeAtSpawn)}`);
+    });
+
     for (let i = 0; i < departureSpawnTimes.length; i++) {
         const takeoffTimeSeconds = departureSpawnTimes[i];
-        const acType = aircraftTypes[Math.floor(Math.random() * aircraftTypes.length)];
-        scenarioAircraftIdCounter++;
-        const callsign = (callsignPrefixes[Math.floor(Math.random() * callsignPrefixes.length)]) + (500 + scenarioAircraftIdCounter);
-        const departureTargetBaseFL = Math.floor(Math.random() * (28 - 18 + 1)) + 18;
-        const departureTargetFL = departureTargetBaseFL * 10;
-        const climbRate = aircraftPerformanceROC[acType] || DEFAULT_CLIMB_RATE;
-        let takeoffTargetWaypointName = null;
-        if (waypointsForDeparture.length > 0) {
-            takeoffTargetWaypointName = waypointsForDeparture[i % waypointsForDeparture.length].name;
-        }
+        const aircraftIndexForLog = i + 1;
+        const realTimeDelayMs = takeoffTimeSeconds * 1000 / gameSpeedMultiplier;
+
         const timeoutIdDeparture = setTimeout(() => {
+            const currentTimeOfSpawn = elapsedTime;
+            const acType = aircraftTypes[Math.floor(Math.random() * aircraftTypes.length)];
+            scenarioAircraftIdCounter++;
+            const callsignNumberBase = (aircraftIndexForLog === 1) ? 100 : 500;
+            const callsign = (callsignPrefixes[Math.floor(Math.random() * callsignPrefixes.length)]) + (callsignNumberBase + scenarioAircraftIdCounter);
+            const departureTargetBaseFL = Math.floor(Math.random() * (28 - 18 + 1)) + 18;
+            const departureTargetFL = departureTargetBaseFL * 10;
+            const climbRate = aircraftPerformanceROC[acType] || DEFAULT_CLIMB_RATE;
+            let takeoffTargetWaypointName = null;
+            if (waypointsForDeparture.length > 0) {
+                takeoffTargetWaypointName = waypointsForDeparture[i % waypointsForDeparture.length].name;
+            } else {
+                console.warn(`Kalkış yapan ${callsign} için hedef waypoint bulunamadı.`);
+            }
             const aircraft = {
-                id: callsign, x: centerX, y: centerY,
-                heading: localizerCourse, targetHeading: localizerCourse,
+                id: callsign, x: centerX, y: centerY, heading: localizerCourse, targetHeading: localizerCourse,
                 speedKTS: 160, altitude: 0, targetAltitude: departureTargetFL * 100,
                 rateOfClimb: climbRate, rateOfDescent: 0, isTakingOff: true, takeoffRunway: activeRunway,
-                isIntercepting: false, isHandedOffToTower: false, showVector: false,
-                labelElement: null, labelX: 0, labelY: 0, labelDragged: true, bankAngle: 0, maxBankAngle: 25,
+                isIntercepting: false, isHandedOffToTower: false, showVector: false, labelElement: null,
+                labelX: 0, labelY: 0, labelDragged: true, bankAngle: 0, maxBankAngle: 25,
                 commandedTurnDirection: 0, turning: false, type: acType, departureTargetFL: departureTargetFL,
                 showInfoPanel: false, draggedLabelDeltaX: 0, draggedLabelDeltaY: 0,
                 lastHeadingUpdateTime: 0, initialPosSet: true, targetWaypoint: takeoffTargetWaypointName
             };
             aircrafts.push(aircraft);
-        }, takeoffTimeSeconds * 1000 / gameSpeedMultiplier);
+            console.log(`KALKIŞ GERÇEKLEŞTİ: Uçak #${aircraftIndexForLog} (${aircraft.id}) oyuna eklendi. Oyun Zamanı: ${formatTime(currentTimeOfSpawn)}`);
+        }, realTimeDelayMs);
         activeScenarioTimeouts.push(timeoutIdDeparture);
     }
+    console.log("Senaryo üretimi tamamlandı ve tüm zamanlayıcılar (uçak spawn) kuruldu.");
 }
 
 function updateMeasurementData() {
