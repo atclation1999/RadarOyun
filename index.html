@@ -713,6 +713,8 @@ const WORLD_ORIGIN_X = 0; // Radarın dünya X koordinatı (örneğin 0)
 const WORLD_ORIGIN_Y = 0; // Radarın dünya Y koordinatı (örneğin 0)
 // grid hattına loc hattına ne kadar yaklaşırsa establish olur?
 const START_ALIGN_ON_LOC_THRESHOLD_NM = 0.1; // Uçağın LOC hattına hizalanmaya başlaması için merkeze olan NM cinsinden eşik mesafe (örneğin 0.3 NM)
+const ARRIVAL_AT_WAYPOINT_THRESHOLD_NM = 0.1;  // Varış uçağının başlangıç waypoint'ine ulaştı sayılma eşiği (NM)
+
 
 speedSlider.addEventListener('input', () => {
     const sliderValue = parseInt(speedSlider.value); // Integer from 0 to 9
@@ -802,11 +804,16 @@ const aircrafts = [
 
 // --- WAYPOINT ADDITION START ---
 const waypoints = [
-    { name: 'PETAR', angle: 270, distanceNM: 43 }, { name: 'SALGO', angle: 296, distanceNM: 43.3 },
-    { name: 'ASTAL', angle: 6,   distanceNM: 38.8 }, { name: 'İLHAN', angle: 57,  distanceNM: 39 },
-    { name: 'GURBU', angle: 83,  distanceNM: 40 },   { name: 'KUBER', angle: 118, distanceNM: 33.5 },
-    { name: 'YUCEL', angle: 136, distanceNM: 42.3 }, { name: 'BAKIR', angle: 155, distanceNM: 42.9 },
-    { name: 'TELVO', angle: 181, distanceNM: 44 },   { name: 'HAY',   angle: 206, distanceNM: 46 }
+    { name: 'PETAR', angle: 270, distanceNM: 43, arrivalTrack: 097 }, 
+	{ name: 'SALGO', angle: 296, distanceNM: 43.3, arrivalTrack: 110 },
+    { name: 'ASTAL', angle: 6,   distanceNM: 38.8, arrivalTrack: 196 }, 
+	{ name: 'İLHAN', angle: 57,  distanceNM: 39, arrivalTrack: 243 },
+    { name: 'GURBU', angle: 83,  distanceNM: 40, arrivalTrack: 274 },   
+	{ name: 'KUBER', angle: 118, distanceNM: 33.5, arrivalTrack: 284 },
+    { name: 'YUCEL', angle: 136, distanceNM: 42.3, arrivalTrack: 305 }, 
+	{ name: 'BAKIR', angle: 155, distanceNM: 42.9, arrivalTrack: 327 },
+    { name: 'TELVO', angle: 181, distanceNM: 44, arrivalTrack: 349 },   
+	{ name: 'HAY',   angle: 206, distanceNM: 46, arrivalTrack: 066 }
 ];
 // --- WAYPOINT ADDITION END ---
 
@@ -1334,7 +1341,6 @@ function updateAircrafts(deltaTime) {
             const distanceWorldPixels = Math.sqrt(dx * dx + dy * dy);
             const distanceNM = worldPixelsToNm(distanceWorldPixels);
             const verticalSeparation = Math.abs(ac2.altitude - ac1.altitude);
-
             if (distanceNM < 3 && verticalSeparation < 500) {
                 if (!airmissPairs.some(pair => (pair[0] === ac1 && pair[1] === ac2) || (pair[0] === ac2 && pair[1] === ac1))) {
                     airmissPairs.push([ac1, ac2]);
@@ -1387,32 +1393,25 @@ function updateAircrafts(deltaTime) {
             if (rate !== 0) {
                 const changeAmountFeet = direction * rate * (effectiveDeltaTime / 60);
                 if (Math.abs(changeAmountFeet) >= Math.abs(altDiff)) {
-                    ac.altitude = ac.targetAltitude;
-                    ac.rateOfClimb = 0;
-                    ac.rateOfDescent = 0;
+                    ac.altitude = ac.targetAltitude; ac.rateOfClimb = 0; ac.rateOfDescent = 0;
                 } else {
                     ac.altitude += changeAmountFeet;
                 }
             }
         } else {
-             ac.rateOfClimb = 0;
-             ac.rateOfDescent = 0;
+            ac.rateOfClimb = 0; ac.rateOfDescent = 0;
         }
 
         // d. Kalkış Mantığı
         if (ac.isTakingOff) {
-            const distFromTakeoffPointNM = worldPixelsToNm(Math.sqrt(
-                (ac.x - WORLD_ORIGIN_X) ** 2 + (ac.y - WORLD_ORIGIN_Y) ** 2
-            ));
+            const distFromTakeoffPointNM = worldPixelsToNm(Math.sqrt( (ac.x - WORLD_ORIGIN_X) ** 2 + (ac.y - WORLD_ORIGIN_Y) ** 2 ));
             const straightFlightDistanceNM = 12.0;
             const targetClimbSpeed = (defaultAircraftSpeeds[ac.type] || 250) - 20;
             const accelerationRateKTSperSec = 2.5;
-
             if (ac.speedKTS < targetClimbSpeed) {
                 ac.speedKTS += accelerationRateKTSperSec * effectiveDeltaTime;
                 if (ac.speedKTS > targetClimbSpeed) ac.speedKTS = targetClimbSpeed;
             }
-
             if (distFromTakeoffPointNM >= straightFlightDistanceNM || ac.altitude >= (ac.departureTargetFL * 100 - 200) ) {
                 ac.isTakingOff = false;
                 if (ac.targetWaypoint) {
@@ -1423,134 +1422,138 @@ function updateAircrafts(deltaTime) {
                         const waypointWorldX = WORLD_ORIGIN_X + Math.sin(wpAngleRad) * wpDistPx;
                         const waypointWorldY = WORLD_ORIGIN_Y - Math.cos(wpAngleRad) * wpDistPx;
                         ac.targetHeading = Math.round(calculateBearing(ac.x, ac.y, waypointWorldX, waypointWorldY));
-                        ac.turning = true;
-                        ac.commandedTurnDirection = 0;
-                        ac.lastHeadingUpdateTime = 0;
-                    } else {
-                        ac.turning = false;
-                    }
-                } else {
-                    ac.turning = false;
-                }
+                        ac.turning = true; ac.commandedTurnDirection = 0; ac.lastHeadingUpdateTime = 0;
+                    } else { ac.turning = false; }
+                } else { ac.turning = false; }
             }
         }
 
+        // --- BAŞLANGIÇ WAYPOINT'İNE VARIŞ VE SONRASI HEDEF BELİRLEME (DÜZ UÇUŞ İLE) ---
+        if (ac.flyingToInitialWaypointName && !ac.hasReachedInitialWaypoint) {
+            const targetWaypointData = waypoints.find(wp => wp.name === ac.flyingToInitialWaypointName);
+            if (targetWaypointData) {
+                const wpAngleRad = toRadians(targetWaypointData.angle);
+                const wpDistPx = nmToWorldPixels(targetWaypointData.distanceNM);
+                const waypointX = WORLD_ORIGIN_X + Math.sin(wpAngleRad) * wpDistPx;
+                const waypointY = WORLD_ORIGIN_Y - Math.cos(wpAngleRad) * wpDistPx;
+
+                const dxToWp = waypointX - ac.x;
+                const dyToWp = waypointY - ac.y;
+                const distToWaypointNM = worldPixelsToNm(Math.sqrt(dxToWp * dxToWp + dyToWp * dyToWp));
+
+                if (distToWaypointNM < ARRIVAL_AT_WAYPOINT_THRESHOLD_NM) { // örn: 0.5 NM
+                    console.log(`[Arrival] ${ac.id} başlangıç waypoint'i ${ac.flyingToInitialWaypointName}'e ulaştı. Şimdi 12. mile (${ac.finalArrivalTargetX},${ac.finalArrivalTargetY}) dönüyor.`);
+                    ac.hasReachedInitialWaypoint = true;
+
+                    if (ac.finalArrivalTargetX !== undefined && ac.finalArrivalTargetY !== undefined) {
+                        const headingToFinalTarget = calculateBearing(ac.x, ac.y, ac.finalArrivalTargetX, ac.finalArrivalTargetY);
+                        ac.targetHeading = Math.round(headingToFinalTarget);
+                        ac.turning = true; // Waypoint'e ulaştıktan SONRA dönüşü başlat
+                        ac.commandedTurnDirection = 0;
+                        ac.lastHeadingUpdateTime = 0;
+                    } else {
+                        console.error(`[Arrival] HATA: ${ac.id} waypoint'e ulaştı ancak son hedef (12.mil) koordinatları tanımsız! Radara doğru yönlendiriliyor.`);
+                        ac.targetHeading = Math.round(calculateBearing(ac.x, ac.y, WORLD_ORIGIN_X, WORLD_ORIGIN_Y));
+                        ac.turning = true; ac.commandedTurnDirection = 0; ac.lastHeadingUpdateTime = 0;
+                    }
+                } else {
+                    // Hala başlangıç waypoint'ine doğru uçuyor.
+                    // Uçak, spawn olurken atanan 'arrivalTrack' üzerinde DÜZ UÇACAK.
+                    // 'ac.turning' false olduğu ve 'ac.heading' ile 'ac.targetHeading' aynı olduğu için,
+                    // aşağıdaki 'f. Kademeli Dönüş Mantığı' bloğu başını değiştirmeyecektir.
+                    // Bu 'else' bloğunda aktif bir baş düzeltmesi YAPILMAZ.
+                }
+            } else {
+                console.warn(`[Arrival] ${ac.id} için başlangıç waypoint'i (${ac.flyingToInitialWaypointName}) waypoints dizisinde bulunamadı! Bu faz atlanıyor.`);
+                ac.hasReachedInitialWaypoint = true;
+            }
+        }
+        // --- BAŞLANGIÇ WAYPOINT'İNE VARIŞ MANTIĞI SONU ---
+
         // ***************************************************************
-        // e. Intercept Mantığı (LOC'a Yönelme) - DİREKT HİZALANMA İLE GÜNCELLENDİ
+        // e. Intercept Mantığı (LOC'a Yönelme) - DİREKT HİZALANMA (SNAP) İLE GÜNCELLENDİ
+        // Bu blok, SADECE uçak başlangıç waypoint görevini tamamlamışsa VEYA (başlangıç waypoint'i yoksa) VE zaten intercept modundaysa çalışır.
         // ***************************************************************
-        if (ac.isIntercepting) {
-            let intendedCourse = ac.interceptCourse; // Hedeflenen LOC başı (örn: 33 veya 213)
+        if ((ac.hasReachedInitialWaypoint || !ac.flyingToInitialWaypointName) && ac.isIntercepting) {
+            let intendedCourse = ac.interceptCourse;
             if (intendedCourse !== undefined && intendedCourse !== null) {
                 const locRad = toRadians(intendedCourse);
-                const lineStartX = WORLD_ORIGIN_X;
-                const lineStartY = WORLD_ORIGIN_Y;
+                const lineStartX = WORLD_ORIGIN_X; const lineStartY = WORLD_ORIGIN_Y;
                 const lineEndX = WORLD_ORIGIN_X + Math.sin(locRad) * nmToWorldPixels(localizerLengthNM);
                 const lineEndY = WORLD_ORIGIN_Y - Math.cos(locRad) * nmToWorldPixels(localizerLengthNM);
-
                 const distToLocCenterlineNM = worldPixelsToNm(pointLineDistance(ac.x, ac.y, lineStartX, lineStartY, lineEndX, lineEndY));
                 const currentHeadingDiffToLocCourse = angleDiff(ac.heading, intendedCourse);
 
-                // Establish olma koşulları (çok yakın ve TAMAMEN hizalı)
                 // ON_LOCALIZER_THRESHOLD_NM (örn: 0.05 NM) ve ESTABLISH_ANGLE_TOLERANCE_DEG (örn: 2.5 derece)
                 if (distToLocCenterlineNM < ON_LOCALIZER_THRESHOLD_NM && Math.abs(currentHeadingDiffToLocCourse) < ESTABLISH_ANGLE_TOLERANCE_DEG) {
-                    // ---- UÇAK LOC HATTINA OTURDU (ESTABLISHED) ----
                     console.log(`%c[Intercept] ${ac.id} ESTABLISHED on LOC ${intendedCourse}! Dist: ${distToLocCenterlineNM.toFixed(3)}, HdgDiff: ${currentHeadingDiffToLocCourse.toFixed(1)}`, "color: lightgreen; font-weight: bold;");
-                    ac.heading = intendedCourse;
-                    ac.targetHeading = intendedCourse;
-                    ac.turning = false;
-                    ac.isIntercepting = false;
-                    ac.commandedTurnDirection = 0;
-                    ac.bankAngle = 0;
-                    ac.interceptCourse = null;
+                    ac.heading = intendedCourse; ac.targetHeading = intendedCourse; ac.turning = false;
+                    ac.isIntercepting = false; ac.commandedTurnDirection = 0; ac.bankAngle = 0; ac.interceptCourse = null;
                     if(typeof updateTopCenterButtonStates === "function") updateTopCenterButtonStates();
                 }
                 // START_ALIGN_ON_LOC_THRESHOLD_NM (örn: 0.3 NM) "gride değme" mesafesidir.
-                else if (distToLocCenterlineNM < START_ALIGN_ON_LOC_THRESHOLD_NM) {
-                    // ---- UÇAK LOC ÇİZGİSİNE YAKIN ("DEĞDİ"): BAŞI DİREKT LOC HATTINA ÇEVİR ----
-                    // Sadece başı zaten LOC başı değilse bu anlık değişikliği yap.
-                    if (Math.round(ac.heading) !== intendedCourse) {
+                else if (distToLocCenterlineNM < START_ALIGN_ON_LOC_THRESHOLD_NM) {
+                    if (Math.round(ac.heading) !== intendedCourse) { // Sadece başı zaten LOC başı değilse anlık değiştir
                         console.log(`[Intercept] ${ac.id} NEAR LOC ${intendedCourse} (Dist: ${distToLocCenterlineNM.toFixed(2)} NM). Snapping heading to LOC course: ${intendedCourse}`);
-                        ac.heading = intendedCourse;         // Başı direkt LOC başına ayarla
-                        ac.targetHeading = intendedCourse;   // Hedef başı da LOC başına ayarla
-                        ac.turning = false;                // Kademeli dönüş gerekmiyor, anlık oldu
-                        ac.bankAngle = 0;                  // Yatış açısını sıfırla
-                        ac.commandedTurnDirection = 0;     // Önceki komutlu dönüşü temizle
-                        ac.lastHeadingUpdateTime = 0;      // Kademeli dönüş zamanlayıcısını sıfırla (gerekirse)
+                        ac.heading = intendedCourse;
+                        ac.targetHeading = intendedCourse;
+                        ac.turning = false; // Anlık hizalanma yapıldığı için kademeli dönüş gerekmez
+                        ac.bankAngle = 0;
+                        ac.commandedTurnDirection = 0;
+                        ac.lastHeadingUpdateTime = 0;
                     }
-                    // Bu adımdan sonra uçak, LOC hattı boyunca düz uçmaya başlayacak.
-                    // Bir sonraki update'te establish kontrolü (yukarıdaki if) devreye girebilir.
                 } else {
-                    // ---- UÇAK HENÜZ LOC ÇİZGİSİNE YAKIN DEĞİL: MEVCUT BAŞIYLA DÜZ UÇMAYA DEVAM ET ----
-                    // Intercept butonuna basıldığında uçak zaten düz uçuşa ayarlanmıştı
-                    // (ac.targetHeading = ac.heading, ac.turning = false).
-                    // Dolayısıyla bu blokta aktif bir eylem gerekmiyor. Kademeli dönüş mantığı (blok 'f')
-                    // ac.turning false olduğu için uçağın başını değiştirmeyecektir.
-                    // console.log(`[Intercept] ${ac.id} for LOC ${intendedCourse} - Continuing straight. Dist to LOC: ${distToLocCenterlineNM.toFixed(2)} NM`);
+                    // Uçak intercept modunda ama HENÜZ LOC çizgisine YAKIN DEĞİL: Mevcut başıyla düz uçmaya devam etmeli.
+                    // Bu durum intercept butonuna basıldığında (ac.targetHeading = ac.heading, ac.turning = false) ayarlanmıştı.
                 }
-            } else { // ac.isIntercepting true ama ac.interceptCourse tanımsız (hata durumu)
+            } else {
                 console.warn(`[Intercept Logic Error] ${ac.id} isIntercepting=true ama ac.interceptCourse tanımsız/null. Fixing state.`);
-                ac.isIntercepting = false;
-                ac.turning = false;
-                ac.interceptCourse = null;
+                ac.isIntercepting = false; ac.turning = false; ac.interceptCourse = null;
                 if(typeof updateTopCenterButtonStates === "function") updateTopCenterButtonStates();
             }
         } // Intercept mantığı sonu
            
         // ***************************************************************
         // f. Kademeli Dönüş Mantığı ve Bank Açısı
-        // (Bu blok, anlık LOC hizalanması dışındaki tüm kademeli dönüşleri yönetir)
         // ***************************************************************
         if (ac.turning) {
             const turnRateDegreesPerFixedStep = 3.0;
             const gameSpeedFactor = (typeof gameSpeedMultiplier === 'number' && gameSpeedMultiplier > 0 ? gameSpeedMultiplier : 1.0);
             const updateIntervalMs = 1000 / gameSpeedFactor;
-
-            if (ac.lastHeadingUpdateTime === undefined) {
-                ac.lastHeadingUpdateTime = 0; 
-            }
+            if (ac.lastHeadingUpdateTime === undefined) ac.lastHeadingUpdateTime = 0;
             const currentTimeMs = performance.now();
 
             if (ac.lastHeadingUpdateTime === 0 || (currentTimeMs - ac.lastHeadingUpdateTime >= updateIntervalMs)) {
                 const diffToTarget = angleDiff(ac.targetHeading, ac.heading);
                 const arrivalThreshold = turnRateDegreesPerFixedStep + 1.0;
-
                 if (ac.lastHeadingUpdateTime !== 0) {
                     if (Math.abs(diffToTarget) < 0.5) {
-                        ac.heading = ac.targetHeading;
-                        ac.turning = false;
-                        ac.commandedTurnDirection = 0;
+                        ac.heading = ac.targetHeading; ac.turning = false; ac.commandedTurnDirection = 0;
                     } else if (Math.abs(diffToTarget) < arrivalThreshold) {
-                        ac.heading = ac.targetHeading;
-                        ac.turning = false;
-                        ac.commandedTurnDirection = 0;
+                        ac.heading = ac.targetHeading; ac.turning = false; ac.commandedTurnDirection = 0;
                     } else {
                         let turnDirectionForStep = ac.commandedTurnDirection;
-                        if (turnDirectionForStep === 0) {
-                            turnDirectionForStep = Math.sign(diffToTarget);
-                        }
+                        if (turnDirectionForStep === 0) turnDirectionForStep = Math.sign(diffToTarget);
                         const turnAmount = turnDirectionForStep * turnRateDegreesPerFixedStep;
                         ac.heading = (ac.heading + turnAmount + 360) % 360;
                     }
                 }
                 ac.lastHeadingUpdateTime = currentTimeMs;
             }
-            
             let turnDirectionForBank = ac.commandedTurnDirection;
-            if (turnDirectionForBank === 0) { 
+            if (turnDirectionForBank === 0) {
                 const diffToTargetForBank = angleDiff(ac.targetHeading, ac.heading);
                 turnDirectionForBank = (Math.abs(diffToTargetForBank) > 0.5) ? Math.sign(diffToTargetForBank) : 0;
             }
-            let requiredBank = Math.min(ac.maxBankAngle, (ac.speedKTS / 10) + 7); 
+            let requiredBank = Math.min(ac.maxBankAngle, (ac.speedKTS / 10) + 7);
             const targetBankAngle = turnDirectionForBank * requiredBank;
-            ac.bankAngle += (targetBankAngle - ac.bankAngle) * (effectiveDeltaTime * 5); 
+            ac.bankAngle += (targetBankAngle - ac.bankAngle) * (effectiveDeltaTime * 5);
             if (Math.abs(ac.bankAngle - targetBankAngle) < 0.5) ac.bankAngle = targetBankAngle;
-
-        } else { // Uçak DÖNMÜYORSA (ac.turning === false)
+        } else { // ac.turning === false
             ac.lastHeadingUpdateTime = 0;
             ac.bankAngle += (0 - ac.bankAngle) * (effectiveDeltaTime * 5);
             if (Math.abs(ac.bankAngle) < 0.1) ac.bankAngle = 0;
         }
-        // --- Kademeli Dönüş Mantığı ve Bank Açısı Sonu ---
 
         // g. Pozisyon Güncelleme
         const speedNMPerSecond = ac.speedKTS / 3600;
@@ -1567,9 +1570,7 @@ function updateAircrafts(deltaTime) {
             const indexToRemove = aircraftsToRemove[i];
             const removedAircraft = aircrafts[indexToRemove];
             if (removedAircraft) {
-                if (removedAircraft.labelElement) {
-                    removedAircraft.labelElement.remove();
-                }
+                if (removedAircraft.labelElement) removedAircraft.labelElement.remove();
                 if (typeof selectedAircraft !== 'undefined' && selectedAircraft && selectedAircraft.id === removedAircraft.id) {
                     selectedAircraft = null;
                     if (typeof popup !== 'undefined' && popup) popup.style.display = 'none';
@@ -1577,9 +1578,7 @@ function updateAircrafts(deltaTime) {
                 aircrafts.splice(indexToRemove, 1);
             }
         }
-        if (typeof updateTopCenterButtonStates === "function") {
-            updateTopCenterButtonStates();
-        }
+        if (typeof updateTopCenterButtonStates === "function") updateTopCenterButtonStates();
     }
 }
 
@@ -1653,234 +1652,246 @@ function hideRunwaySelection() {
 
 
 function initializeScenarioGeneration(activeRunway) {
-    // 1. Oyun Hızını Ayarla
-    if (typeof speedSlider !== 'undefined' && speedSlider && typeof speedMultipliers !== 'undefined' && speedMultipliers.length > 0) {
-        gameSpeedMultiplier = speedMultipliers[parseInt(speedSlider.value)];
-        speedFactor = gameSpeedMultiplier;
-    } else {
-        gameSpeedMultiplier = 1.0; // Varsayılan değer
-        speedFactor = 1.0;
-        console.warn("Hız ayar elemanları (speedSlider veya speedMultipliers) bulunamadı. Varsayılan hız (1x) kullanılıyor.");
-    }
+    // 1. Oyun Hızını Ayarla
+    if (typeof speedSlider !== 'undefined' && speedSlider && typeof speedMultipliers !== 'undefined' && speedMultipliers.length > 0) {
+        gameSpeedMultiplier = speedMultipliers[parseInt(speedSlider.value)];
+        speedFactor = gameSpeedMultiplier; // speedFactor, gameSpeedMultiplier ile senkronize olmalı
+    } else {
+        gameSpeedMultiplier = 1.0; // Varsayılan değer
+        speedFactor = 1.0;
+        console.warn("Hız ayar elemanları (speedSlider veya speedMultipliers) bulunamadı. Varsayılan hız (1x) kullanılıyor.");
+    }
 
-    // 2. Gerekirse Pist Seçim Modalını Gizle
-    if (typeof hideRunwaySelection === "function") {
-        hideRunwaySelection();
-    }
+    // 2. Gerekirse Pist Seçim Modalını Gizle
+    if (typeof hideRunwaySelection === "function") {
+        hideRunwaySelection();
+    }
 
-    // 3. Oyun Zamanlayıcısını Sıfırla ve Başlat
-    elapsedTime = 36000; // Örn: 10:00:00 (saniye cinsinden)
-    if (timerInterval) {
-        clearInterval(timerInterval);
-        timerInterval = null;
-    }
-    if (isPaused) {
-        isPaused = false;
-        if (playPauseButton) {
-            playPauseButton.textContent = 'Durdur';
-            playPauseButton.classList.remove('paused');
+    // 3. Oyun Zamanlayıcısını Sıfırla ve Başlat
+    elapsedTime = 36000; // Örn: 10:00:00 (saniye cinsinden)
+    if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+    }
+    if (isPaused) { // Eğer oyun duraklatılmışsa, oynatmaya başla
+        isPaused = false;
+        if (playPauseButton) {
+            playPauseButton.textContent = 'Durdur';
+            playPauseButton.classList.remove('paused');
+        }
+    }
+    if (typeof startGameTimer === "function") { // Bu fonksiyon elapsedTime'ı ve speedFactor'ü kullanarak zamanı günceller
+        startGameTimer();
+    }
+
+    // 4. Önceki Senaryo Zamanlayıcılarını Temizle
+    if (activeScenarioTimeouts && activeScenarioTimeouts.length > 0) {
+        activeScenarioTimeouts.forEach(timeoutId => clearTimeout(timeoutId));
+        activeScenarioTimeouts = [];
+    }
+
+    console.log(`YENİ SENARYO BAŞLADI - Aktif Pist: ${activeRunway}, Zaman: ${formatTime(elapsedTime)}, Oyun Hızı: ${gameSpeedMultiplier}x`);
+
+    // 5. Mevcut Uçakları ve Etiketlerini Temizle
+    aircrafts.forEach(ac => {
+        if (ac.labelElement) ac.labelElement.remove();
+    });
+    aircrafts.length = 0; // aircrafts dizisini boşalt
+    selectedAircraft = null;
+    if (typeof updateTopCenterButtonStates === "function") {
+        updateTopCenterButtonStates();
+    }
+    if (popup) popup.style.display = 'none';
+    scenarioAircraftIdCounter = 0; // Benzersiz ID için sayacı sıfırla
+
+    // 6. Oyun Döngüsünü Gerekirse Yeniden Başlat
+    if (!isPaused) {
+        lastTime = performance.now(); // lastTime'ı sıfırla/güncelle
+        if (animationFrameId) { // Eğer zaten bir döngü çalışıyorsa iptal et (genelde gerekmez ama önlem)
+            cancelAnimationFrame(animationFrameId);
+            animationFrameId = null;
         }
-    }
-    if (typeof startGameTimer === "function") {
-        startGameTimer();
-    }
+        if (typeof gameLoop === "function") { // gameLoop'u başlat
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+    }
 
-    // 4. Önceki Senaryo Zamanlayıcılarını Temizle
-    if (activeScenarioTimeouts && activeScenarioTimeouts.length > 0) {
-        activeScenarioTimeouts.forEach(timeoutId => clearTimeout(timeoutId));
-        activeScenarioTimeouts = [];
-    }
+    // 7. İniş Uçakları İçin SON HEDEF NOKTA (Pistin 12. mili)
+    // Bu değerler, oluşturulacak her varış uçağına atanacak.
+    const localizerCourseForFinalArrival = activeRunway === '03R' ? INTERCEPT_TARGET_COURSE_033 : INTERCEPT_TARGET_COURSE_21L;
+    let finalTargetPointAngleDeg = (localizerCourseForFinalArrival + 180) % 360; // Pistten dışarı doğru açı
+    const finalTargetPointAngleRad = toRadians(finalTargetPointAngleDeg);
+    const finalTargetPointDistanceNM = 13; // İniş için 12. mil hedefi
+    const globalFinalArrivalTargetX = WORLD_ORIGIN_X + Math.sin(finalTargetPointAngleRad) * nmToWorldPixels(finalTargetPointDistanceNM);
+    const globalFinalArrivalTargetY = WORLD_ORIGIN_Y - Math.cos(finalTargetPointAngleRad) * nmToWorldPixels(finalTargetPointDistanceNM);
 
-    console.log(`YENİ SENARYO BAŞLADI - Aktif Pist: ${activeRunway}, Zaman: ${formatTime(elapsedTime)}, Oyun Hızı: ${gameSpeedMultiplier}x`);
+    // 8. İniş Uçaklarını Üret
+    const waypointMEAs = { 'ASTAL': 16000, 'SALGO': 15000, 'YUCEL': 21000, 'BAKIR': 17000 /* ...diğerleri... */ };
+    const SPAWN_DISTANCE_FROM_WAYPOINT_NM = 5; // YENİ: Waypoint'ten spawn olma mesafesi (NM)
+    const numArrivals = 5; // Üretilecek iniş uçağı sayısı
+    const arrivalSpawnWindowSeconds = 60 * 5; // İniş uçaklarının ne kadarlık bir zaman diliminde spawn olacağı
 
-    // 5. Mevcut Uçakları ve Etiketlerini Temizle
-    aircrafts.forEach(ac => {
-        if (ac.labelElement) ac.labelElement.remove();
-    });
-    aircrafts.length = 0;
-    selectedAircraft = null;
-    if (typeof updateTopCenterButtonStates === "function") {
-        updateTopCenterButtonStates();
-    }
-    if (popup) popup.style.display = 'none';
-    scenarioAircraftIdCounter = 0;
+    let availableWaypointsForScenario = [...waypoints].sort(() => 0.5 - Math.random());
+    let arrivalWaypointsSelection = [];
+    if (availableWaypointsForScenario.length > 0) {
+        for (let k = 0; k < numArrivals; k++) {
+            arrivalWaypointsSelection.push(availableWaypointsForScenario[k % availableWaypointsForScenario.length]);
+        }
+        arrivalWaypointsSelection.sort(() => 0.5 - Math.random()); // Tekrar karıştır
+    } else {
+        console.warn("Senaryo için uygun waypoint bulunamadı. İniş trafiği üretilemiyor.");
+    }
 
-    // 6. Oyun Döngüsünü Gerekirse Yeniden Başlat
-    if (!isPaused) {
-        lastTime = performance.now();
-        if (!animationFrameId && typeof gameLoop === "function") {
-            animationFrameId = requestAnimationFrame(gameLoop); // gameLoop içinde bir sonraki frame istenir
-        }
-    }
+    let firstFLForWaypoint = {}; // Aynı waypoint'ten farklı FL'lerde spawn için
 
-    // 7. İniş Uçakları İçin Hedef Nokta (Pistin 12. mili, WORLD_ORIGIN'e göre)
-    const localizerCourseForArrival = activeRunway === '03R' ? INTERCEPT_TARGET_COURSE_033 : INTERCEPT_TARGET_COURSE_21L;
-    let targetPointAngleDeg = (localizerCourseForArrival + 180) % 360; // Pistten dışarı doğru açı
-    const targetPointAngleRad = toRadians(targetPointAngleDeg);
-    const targetPointDistanceNM = 12; // İniş için 12. mil hedefi
+    for (let i = 0; i < arrivalWaypointsSelection.length; i++) {
+        const spawnTimeGameSeconds = (Math.random() * arrivalSpawnWindowSeconds); // Oyun saniyesi cinsinden gecikme
+        const waypoint = arrivalWaypointsSelection[i]; // Seçilen waypoint (örn: PETAR objesi)
 
-    const targetPointX = WORLD_ORIGIN_X + Math.sin(targetPointAngleRad) * nmToWorldPixels(targetPointDistanceNM);
-    const targetPointY = WORLD_ORIGIN_Y - Math.cos(targetPointAngleRad) * nmToWorldPixels(targetPointDistanceNM);
+        // Waypoint'in mutlak dünya koordinatlarını hesapla
+        const waypointActualX = WORLD_ORIGIN_X + Math.sin(toRadians(waypoint.angle)) * nmToWorldPixels(waypoint.distanceNM);
+        const waypointActualY = WORLD_ORIGIN_Y - Math.cos(toRadians(waypoint.angle)) * nmToWorldPixels(waypoint.distanceNM);
 
-    // 8. İniş Uçaklarını Üret
-    const waypointMEAs = { 'ASTAL': 16000, 'SALGO': 15000, 'YUCEL': 21000, 'BAKIR': 17000 /* ...diğerleri */ };
-    const arrivalDistanceOffsetNM = 10; // Waypoint'ten ne kadar dışarıda spawn olacağı (NM)
-    const numArrivals = 5; // Üretilecek iniş uçağı sayısı
-    const arrivalSpawnWindowSeconds = 60 * 5; // İniş uçaklarının ne kadarlık bir zaman diliminde spawn olacağı (oyun saniyesi)
-
-    let availableWaypointsForScenario = [...waypoints].sort(() => 0.5 - Math.random());
-    let arrivalWaypointsSelection = [];
-    if (availableWaypointsForScenario.length > 0) {
-        for (let k = 0; k < numArrivals; k++) {
-            arrivalWaypointsSelection.push(availableWaypointsForScenario[k % availableWaypointsForScenario.length]);
-        }
-        arrivalWaypointsSelection.sort(() => 0.5 - Math.random()); // Tekrar karıştır
-    } else {
-        console.warn("Senaryo için uygun waypoint bulunamadı. İniş trafiği üretilemiyor.");
-    }
-
-    let firstFLForWaypoint = {}; // Aynı waypoint'ten kalkan uçakların farklı FL'de olması için
-
-    for (let i = 0; i < arrivalWaypointsSelection.length; i++) {
-        const spawnTimeGameSeconds = (Math.random() * arrivalSpawnWindowSeconds); // Oyun saniyesi cinsinden gecikme
-        const waypoint = arrivalWaypointsSelection[i];
-
-        const wpDefAngleRad = toRadians(waypoint.angle);
-        const spawnDistanceTotalNM = waypoint.distanceNM + arrivalDistanceOffsetNM;
-
-        const spawnX = WORLD_ORIGIN_X + Math.sin(wpDefAngleRad) * nmToWorldPixels(spawnDistanceTotalNM);
-        const spawnY = WORLD_ORIGIN_Y - Math.cos(wpDefAngleRad) * nmToWorldPixels(spawnDistanceTotalNM);
-
-        const bearingToTargetPoint = calculateBearing(spawnX, spawnY, targetPointX, targetPointY);
-
-        // İrtifa belirleme mantığı (örnek, kendi mantığınızı uyarlayın)
-        let baseFLArr = Math.floor(Math.random() * (22 - 13 + 1)) + 13; // FL130-FL220 arası
-        let altitudeFLArr = baseFLArr * 10; // FL1300 değil, FL130 olmalı -> baseFLArr
-        let altitudeFeetArr = altitudeFLArr * 100;
-        const meaForWaypoint = waypointMEAs[waypoint.name];
-        if (meaForWaypoint && altitudeFeetArr < meaForWaypoint) {
-            altitudeFeetArr = meaForWaypoint;
-            altitudeFLArr = meaForWaypoint / 100;
-        }
-        // Aynı waypoint için farklı FL atama denemesi
-        if (firstFLForWaypoint[waypoint.name] === undefined) {
-            firstFLForWaypoint[waypoint.name] = altitudeFLArr;
+        // Uçağın waypoint'e doğru izleyeceği başlangıç başı (waypoint objesindeki arrivalTrack'ten alınır)
+        let aircraftInitialHeading;
+        if (waypoint.arrivalTrack !== undefined && waypoint.arrivalTrack !== null) {
+            aircraftInitialHeading = waypoint.arrivalTrack;
         } else {
-            let attempts = 0;
-            const originalFL = firstFLForWaypoint[waypoint.name];
-            while (altitudeFLArr === originalFL && attempts < 10) { // 10 denemeden sonra vazgeç
-                baseFLArr = Math.floor(Math.random() * (22 - 13 + 1)) + 13;
-                altitudeFLArr = baseFLArr; // FLxxx formatında
-                altitudeFeetArr = altitudeFLArr * 100;
-                if (meaForWaypoint && altitudeFeetArr < meaForWaypoint) {
-                    altitudeFeetArr = meaForWaypoint; altitudeFLArr = meaForWaypoint / 100;
-                }
-                attempts++;
-            }
+            // Fallback: Eğer arrivalTrack tanımlı değilse, bir uyarı ver ve waypoint'e doğru kaba bir baş hesapla.
+            // Bu durumun olmaması idealdir, her waypoint için arrivalTrack tanımlanmalıdır.
+            console.warn(`Waypoint ${waypoint.name} için arrivalTrack tanımlanmamış! Waypoint'in merkezden açısının tersi kullanılıyor (hatalı olabilir).`);
+            aircraftInitialHeading = (waypoint.angle + 180) % 360; // Çok kaba bir fallback
         }
 
+        // Spawn pozisyonunu hesapla: Waypoint'ten, arrivalTrack'in tersi yönde 5 NM uzakta
+        const spawnAngleFromWaypointRad = toRadians((aircraftInitialHeading + 180) % 360);
+        const spawnOffsetX = Math.sin(spawnAngleFromWaypointRad) * nmToWorldPixels(SPAWN_DISTANCE_FROM_WAYPOINT_NM);
+        const spawnOffsetY = -Math.cos(spawnAngleFromWaypointRad) * nmToWorldPixels(SPAWN_DISTANCE_FROM_WAYPOINT_NM); // Y ekseni ters olduğu için eksi
 
-        const acTypeArr = aircraftTypes[Math.floor(Math.random() * aircraftTypes.length)];
-        const realTimeDelayMs = spawnTimeGameSeconds * 1000 / gameSpeedMultiplier; // Gerçek ms cinsinden gecikme
+        const spawnX = waypointActualX + spawnOffsetX;
+        const spawnY = waypointActualY + spawnOffsetY;
 
-        const timeoutIdArrival = setTimeout(() => {
-            const currentElapsedTimeAtSpawn = elapsedTime; // Spawn anındaki oyun zamanı
-            scenarioAircraftIdCounter++;
-            const callsignArr = (callsignPrefixes[Math.floor(Math.random() * callsignPrefixes.length)]) + (100 + scenarioAircraftIdCounter + i); // Daha unique ID
-            const newArrival = {
-                id: callsignArr, x: spawnX, y: spawnY,
-                heading: Math.round(bearingToTargetPoint), targetHeading: Math.round(bearingToTargetPoint),
-                speedKTS: defaultAircraftSpeeds[acTypeArr] || 250,
-                altitude: altitudeFeetArr, targetAltitude: altitudeFeetArr, // Başlangıçta hedef irtifada
-                rateOfDescent: 0, rateOfClimb: 0, isTakingOff: false, takeoffRunway: null,
-                isIntercepting: false, isHandedOffToTower: false, showVector: false, labelElement: null,
-                labelX: 0, labelY: 0, labelDragged: false, bankAngle: 0, maxBankAngle: 25,
-                commandedTurnDirection: 0, turning: false, type: acTypeArr, departureTargetFL: null,
-                showInfoPanel: false, draggedLabelDeltaX: 0, draggedLabelDeltaY: 0,
+        // İrtifa belirleme mantığı
+        let baseFLArr = Math.floor(Math.random() * (22 - 13 + 1)) + 13;
+        let altitudeFLArr = baseFLArr;
+        let altitudeFeetArr = altitudeFLArr * 100;
+        const meaForWaypoint = waypointMEAs[waypoint.name];
+        if (meaForWaypoint && altitudeFeetArr < meaForWaypoint) {
+            altitudeFeetArr = meaForWaypoint;
+            altitudeFLArr = meaForWaypoint / 100;
+        }
+        if (firstFLForWaypoint[waypoint.name] === undefined) {
+            firstFLForWaypoint[waypoint.name] = altitudeFLArr;
+        } else {
+            let attempts = 0;
+            const originalFL = firstFLForWaypoint[waypoint.name];
+            while (altitudeFLArr === originalFL && attempts < 10) {
+                baseFLArr = Math.floor(Math.random() * (22 - 13 + 1)) + 13;
+                altitudeFLArr = baseFLArr;
+                altitudeFeetArr = altitudeFLArr * 100;
+                if (meaForWaypoint && altitudeFeetArr < meaForWaypoint) {
+                    altitudeFeetArr = meaForWaypoint; altitudeFLArr = meaForWaypoint / 100;
+                }
+                attempts++;
+            }
+        }
+
+        const acTypeArr = aircraftTypes[Math.floor(Math.random() * aircraftTypes.length)];
+        const realTimeDelayMs = spawnTimeGameSeconds * 1000 / gameSpeedMultiplier; // Gerçek ms cinsinden gecikme
+
+        const timeoutIdArrival = setTimeout(() => {
+            const currentElapsedTimeAtSpawn = elapsedTime; // Spawn anındaki oyun zamanı
+            scenarioAircraftIdCounter++;
+            const callsignArr = (callsignPrefixes[Math.floor(Math.random() * callsignPrefixes.length)]) + (100 + scenarioAircraftIdCounter + i);
+            const newArrival = {
+                id: callsignArr, x: spawnX, y: spawnY, // YENİ HESAPLANAN SPAWN X, Y
+                heading: Math.round(aircraftInitialHeading),         // waypoint.arrivalTrack
+                targetHeading: Math.round(aircraftInitialHeading),   // waypoint.arrivalTrack (heading ile aynı)
+                speedKTS: defaultAircraftSpeeds[acTypeArr] || 250,
+                altitude: altitudeFeetArr, targetAltitude: altitudeFeetArr,
+                rateOfDescent: 0, rateOfClimb: 0, isTakingOff: false, takeoffRunway: null,
+                isIntercepting: false, // Başlangıçta intercept modunda değil
+                isHandedOffToTower: false, showVector: false, labelElement: null,
+                labelX: 0, labelY: 0, labelDragged: false, bankAngle: 0, maxBankAngle: 25,
+                commandedTurnDirection: 0,
+                turning: false, // ÖNEMLİ: Başlangıçta DÜZ uçacak (arrivalTrack üzerinde)
+                type: acTypeArr, departureTargetFL: null,
+                showInfoPanel: false, draggedLabelDeltaX: 0, draggedLabelDeltaY: 0,
 				showTrajectory: false,
-                lastHeadingUpdateTime: 0, initialPosSet: true, targetWaypoint: null // İniş için başlangıçta belirli bir waypoint'e değil, 12. mile yönelir
-            };
-            aircrafts.push(newArrival);
-            console.log(`ARRIVAL: Uçak ${newArrival.id} (${waypoint.name} üzerinden ${spawnDistanceTotalNM.toFixed(1)}NM) oyuna eklendi. Hedef: Pist 12.mil (${formatFlightLevel(targetPointDistanceNM * 100)}). İrtifa: ${formatFlightLevel(newArrival.altitude)}. Oyun Zamanı: ${formatTime(currentElapsedTimeAtSpawn)}`);
-        }, realTimeDelayMs);
-        activeScenarioTimeouts.push(timeoutIdArrival);
-    }
+                lastHeadingUpdateTime: 0, initialPosSet: true, // Pozisyon direkt ayarlandığı için true
+                // --- VARUŞ UÇAKLARINA ÖZEL YENİ ÖZELLİKLER ---
+                flyingToInitialWaypointName: waypoint.name, // Hangi waypoint'e doğru uçtuğu bilgisi
+                hasReachedInitialWaypoint: false,           // Başlangıç waypoint'ine ulaşıp ulaşmadığı bayrağı
+                finalArrivalTargetX: globalFinalArrivalTargetX, // Waypoint'e ulaştıktan sonraki hedef X (12. mil)
+                finalArrivalTargetY: globalFinalArrivalTargetY  // Waypoint'e ulaştıktan sonraki hedef Y (12. mil)
+            };
+            aircrafts.push(newArrival);
+            console.log(`ARRIVAL (New Spawn Method): Uçak ${newArrival.id} (Spawn: X${spawnX.toFixed(1)},Y${spawnY.toFixed(1)}) -> ${waypoint.name} (WP: X${waypointActualX.toFixed(1)},Y${waypointActualY.toFixed(1)}) @ ${newArrival.heading}° başıyla. Oyun Zamanı: ${formatTime(currentElapsedTimeAtSpawn)}`);
+        }, realTimeDelayMs);
+        activeScenarioTimeouts.push(timeoutIdArrival);
+    }
 
-    // 9. Kalkış Uçaklarını Üret
-    const departureSpawnTimesGameSeconds = [ // Oyun saniyesi cinsinden
-        Math.random() * 30,              // İlk uçak 0-30 saniye içinde
-        100 + (Math.random() * 50)       // İkinci uçak 100-150 saniye içinde
-        // ... daha fazla kalkış eklenebilir
-    ];
-    const departureRunwayCourse = activeRunway === '03R' ? INTERCEPT_TARGET_COURSE_033 : INTERCEPT_TARGET_COURSE_21L;
-    const westernBoundWaypoints = ['HAY', 'PETAR', 'SALGO', 'ASTAL']; // Batıya giden waypointler (FL kuralı için)
-    let waypointsForDeparture = [...waypoints].sort(() => 0.5 - Math.random());
+    // 9. Kalkış Uçaklarını Üret (Bu kısım önceki haliyle kalabilir)
+    const departureSpawnTimesGameSeconds = [
+        Math.random() * 30, // İlk uçak 0-30 saniye içinde
+        100 + (Math.random() * 50) // İkinci uçak 100-150 saniye içinde
+    ];
+    const departureRunwayCourse = activeRunway === '03R' ? INTERCEPT_TARGET_COURSE_033 : INTERCEPT_TARGET_COURSE_21L;
+    const westernBoundWaypoints = ['HAY', 'PETAR', 'SALGO', 'ASTAL'];
+    let waypointsForDeparture = [...waypoints].sort(() => 0.5 - Math.random());
 
+    // Kalkış uçaklarının zamanlamasını logla (isteğe bağlı)
+    // departureSpawnTimesGameSeconds.forEach((spawnDelay, index) => { ... });
 
-    console.log("--- Kalkış Uçakları Zamanlaması (Yeni senaryo başlangıcına göre) ---");
-    departureSpawnTimesGameSeconds.forEach((spawnDelay, index) => {
-        const realTimeDelayForTimeout = spawnDelay * 1000 / gameSpeedMultiplier;
-        const expectedGameTimeAtSpawn = elapsedTime + spawnDelay; // Bu elapsedTime, fonksiyonun başındaki 36000s
-        console.log(`Kalkış Uçağı #${index + 1}: Planlanan Kalkış Gecikmesi (Oyun Saniyesi): ${spawnDelay.toFixed(1)}s. Gerçek Zaman Gecikmesi (setTimeout): ${realTimeDelayForTimeout.toFixed(0)}ms. Beklenen Oyun Zamanı: ${formatTime(expectedGameTimeAtSpawn)}`);
-    });
+    for (let i = 0; i < departureSpawnTimesGameSeconds.length; i++) {
+        const takeoffTimeGameSeconds = departureSpawnTimesGameSeconds[i];
+        const realTimeDelayMs = takeoffTimeGameSeconds * 1000 / gameSpeedMultiplier;
 
-
-    for (let i = 0; i < departureSpawnTimesGameSeconds.length; i++) {
-        const takeoffTimeGameSeconds = departureSpawnTimesGameSeconds[i];
-        const realTimeDelayMs = takeoffTimeGameSeconds * 1000 / gameSpeedMultiplier;
-
-        const timeoutIdDeparture = setTimeout(() => {
-            const currentTimeOfSpawn = elapsedTime; // Spawn anındaki oyun zamanı
-            const acTypeDep = aircraftTypes[Math.floor(Math.random() * aircraftTypes.length)];
-            scenarioAircraftIdCounter++;
-            const callsignDep = (callsignPrefixes[Math.floor(Math.random() * callsignPrefixes.length)]) + (500 + scenarioAircraftIdCounter + i); // Daha unique ID
-
-            let takeoffTargetWaypointName = null;
-            if (waypointsForDeparture.length > 0) {
-                takeoffTargetWaypointName = waypointsForDeparture[i % waypointsForDeparture.length].name;
-            }
-
-            // Kalkış için hedef FL belirleme (tek/çift kuralı)
-            let departureTargetFL;
-            const departureMinFL = 180; const departureMaxFL = 280;
-            const isWesternBound = takeoffTargetWaypointName && westernBoundWaypoints.includes(takeoffTargetWaypointName);
-            let possibleFLs = [];
-            for (let fl = departureMinFL; fl <= departureMaxFL; fl += 10) {
-                if (isWesternBound && fl % 20 === 0) possibleFLs.push(fl); // Batıya çift (örn: 180, 200, 220)
-                else if (!isWesternBound && fl % 20 !== 0) possibleFLs.push(fl); // Doğuya tek (örn: 190, 210, 230)
-            }
-            if (possibleFLs.length > 0) {
-                departureTargetFL = possibleFLs[Math.floor(Math.random() * possibleFLs.length)];
-            } else { // Uygun FL bulunamazsa rastgele bir FL ata (bu durum pek olmamalı)
-                departureTargetFL = Math.floor(Math.random() * ((departureMaxFL / 10) - (departureMinFL / 10) + 1)) * 10 + departureMinFL;
-                console.warn(`Uygun tek/çift FL bulunamadı, ${takeoffTargetWaypointName} için fallback FL=${departureTargetFL} atandı.`);
-            }
-
-            const climbRate = aircraftPerformanceROC[acTypeDep] || DEFAULT_CLIMB_RATE;
-
-            const newDeparture = {
-                id: callsignDep,
-                x: WORLD_ORIGIN_X, // Pist merkezinden kalkar
-                y: WORLD_ORIGIN_Y,
-                heading: departureRunwayCourse, // Pist başı
-                targetHeading: departureRunwayCourse,
-                speedKTS: 160, // Başlangıç kalkış hızı
-                altitude: 0,   // Yerden başlar
-                targetAltitude: departureTargetFL * 100,
-                rateOfClimb: climbRate, rateOfDescent: 0, isTakingOff: true, takeoffRunway: activeRunway,
-                isIntercepting: false, isHandedOffToTower: false, showVector: false, labelElement: null,
-                labelX: 0, labelY: 0, labelDragged: false, bankAngle: 0, maxBankAngle: 25,
-                commandedTurnDirection: 0, turning: false, type: acTypeDep, departureTargetFL: departureTargetFL,
-                showInfoPanel: false, draggedLabelDeltaX: 0, draggedLabelDeltaY: 0,
-				showTrajectory: false,
-                lastHeadingUpdateTime: 0, initialPosSet: true, targetWaypoint: takeoffTargetWaypointName
-            };
-            aircrafts.push(newDeparture);
-            console.log(`KALKIŞ: Uçak ${newDeparture.id} pist ${activeRunway} -> ${takeoffTargetWaypointName || 'N/A'}. Hedef FL${newDeparture.departureTargetFL}. Oyun Zamanı: ${formatTime(currentTimeOfSpawn)}`);
-        }, realTimeDelayMs);
-        activeScenarioTimeouts.push(timeoutIdDeparture);
-    }
-    console.log("Senaryo üretimi tamamlandı ve tüm uçak spawn zamanlayıcıları kuruldu.");
+        const timeoutIdDeparture = setTimeout(() => {
+            const currentTimeOfSpawn = elapsedTime;
+            const acTypeDep = aircraftTypes[Math.floor(Math.random() * aircraftTypes.length)];
+            scenarioAircraftIdCounter++;
+            const callsignDep = (callsignPrefixes[Math.floor(Math.random() * callsignPrefixes.length)]) + (500 + scenarioAircraftIdCounter + i);
+            let takeoffTargetWaypointName = null;
+            if (waypointsForDeparture.length > 0) {
+                takeoffTargetWaypointName = waypointsForDeparture[i % waypointsForDeparture.length].name;
+            }
+            let departureTargetFL;
+            const departureMinFL = 180; const departureMaxFL = 280;
+            const isWesternBound = takeoffTargetWaypointName && westernBoundWaypoints.includes(takeoffTargetWaypointName);
+            let possibleFLs = [];
+            for (let fl = departureMinFL; fl <= departureMaxFL; fl += 10) {
+                if (isWesternBound && fl % 20 === 0) possibleFLs.push(fl);
+                else if (!isWesternBound && fl % 20 !== 0) possibleFLs.push(fl);
+            }
+            if (possibleFLs.length > 0) {
+                departureTargetFL = possibleFLs[Math.floor(Math.random() * possibleFLs.length)];
+            } else { 
+                departureTargetFL = Math.floor(Math.random() * ((departureMaxFL / 10) - (departureMinFL / 10) + 1)) * 10 + departureMinFL;
+                console.warn(`Uygun tek/çift FL bulunamadı, ${takeoffTargetWaypointName} için fallback FL=${departureTargetFL} atandı.`);
+            }
+            const climbRate = aircraftPerformanceROC[acTypeDep] || DEFAULT_CLIMB_RATE;
+            const newDeparture = {
+                id: callsignDep, x: WORLD_ORIGIN_X, y: WORLD_ORIGIN_Y,
+                heading: departureRunwayCourse, targetHeading: departureRunwayCourse,
+                speedKTS: 160, altitude: 0, targetAltitude: departureTargetFL * 100,
+                rateOfClimb: climbRate, rateOfDescent: 0, isTakingOff: true, takeoffRunway: activeRunway,
+                isIntercepting: false, isHandedOffToTower: false, showVector: false, labelElement: null,
+                labelX: 0, labelY: 0, labelDragged: false, bankAngle: 0, maxBankAngle: 25,
+                commandedTurnDirection: 0, turning: false, type: acTypeDep, departureTargetFL: departureTargetFL,
+                showInfoPanel: false, draggedLabelDeltaX: 0, draggedLabelDeltaY: 0, showTrajectory: false,
+                lastHeadingUpdateTime: 0, initialPosSet: true, targetWaypoint: takeoffTargetWaypointName,
+                flyingToInitialWaypointName: null, // Kalkış uçakları için bu özellikler başlangıçta anlamsız
+                hasReachedInitialWaypoint: false,  // veya true da olabilir bu fazı atlaması için
+                finalArrivalTargetX: null,
+                finalArrivalTargetY: null
+            };
+            aircrafts.push(newDeparture);
+            console.log(`KALKIŞ: Uçak ${newDeparture.id} pist ${activeRunway} -> ${takeoffTargetWaypointName || 'N/A'}. Hedef FL${newDeparture.departureTargetFL}. Oyun Zamanı: ${formatTime(currentTimeOfSpawn)}`);
+        }, realTimeDelayMs);
+        activeScenarioTimeouts.push(timeoutIdDeparture);
+    }
+    console.log("Senaryo üretimi tamamlandı ve tüm uçak spawn zamanlayıcıları kuruldu.");
 }
 
 
@@ -3350,7 +3361,6 @@ const infoPopupDetails = {
     version: "1.0.2", // Pop-up içeriği her değiştiğinde bu versiyonu artırın
     title: "Radar Simülasyonuna Hoş Geldiniz!",
     messageHTML: `
-        <p>Bu radar ekranında, uçaklara güvenli bir şekilde yol göstermek sizin göreviniz!</p>
         <p><strong>Temel Amaçlar:</strong></p>
         <ul>
             <li>Uçakları localizer (LOC) hatlarına yönlendirerek piste yaklaştırın.</li>
@@ -3359,6 +3369,7 @@ const infoPopupDetails = {
         </ul>
         <p><strong>Son Güncellemeler (18 Mayıs 2025):  MUTLAKA OKUYUNUZ!!!</strong></p>
         <ul>
+		    <li>Uçaklar waypointlere doğru açılarla gelip waypointten sonra IAF'ye doğru açı ile dönüyorlar örneğin TELVO 349</li>
             <li>Artık eğer farenizde forward tuşu varsa (nitadaki ölçüm yapmaya yarayan tuş) bu tuşu kullanarak ölçümü başlatabilirsiniz.</li>
             <li>Kalkış yapan uçaklar için "LTXX" trajektör gösterimi eklendi LTXX'e basarak kalkış uçaklarının trajectory'sini açıp kapatabilirsiniz.</li>
 			<li>Tam ekran butonuna istediğiniz zaman basabilirsiniz. Uçaklar küçük ekrandan tam ekrana geçerken artık pozisyon değiştirmiyor.</li>
