@@ -768,7 +768,7 @@
                 <div id="aiHeadingValue" class="ai-value clickable-value" data-field="heading">---°</div>
             </div>
             <div class="ai-rod-section">
-                <div class="ai-label">VS</div>
+                <div class="ai-label">ROD</div>
                 <div id="aiRodValue" class="ai-value clickable-value" data-field="rateOfDescent">-----</div>
             </div>
         </div>
@@ -821,7 +821,7 @@ const WORLD_ORIGIN_X = 0; // Radarın dünya X koordinatı (örneğin 0)
 const WORLD_ORIGIN_Y = 0; // Radarın dünya Y koordinatı (örneğin 0)
 // grid hattına loc hattına ne kadar yaklaşırsa establish olur?
 const START_ALIGN_ON_LOC_THRESHOLD_NM = 0.1; // Uçağın LOC hattına hizalanmaya başlaması için merkeze olan NM cinsinden eşik mesafe (örneğin 0.3 NM)
-const ARRIVAL_AT_WAYPOINT_THRESHOLD_NM = 3;  // Varış uçağının başlangıç waypoint'ine ulaştı sayılma eşiği (NM)
+const ARRIVAL_AT_WAYPOINT_THRESHOLD_NM = 4;  // Varış uçağının başlangıç waypoint'ine ulaştı sayılma eşiği (NM)
 
 
 
@@ -902,7 +902,7 @@ const DEFAULT_ROD = 1500; const DEFAULT_CLIMB_RATE = 2500;
 const INTERCEPT_ANGLE_MIN_033 = 30; const INTERCEPT_ANGLE_MAX_033 = 60;
 const INTERCEPT_ANGLE_MIN_21L = 170; const INTERCEPT_ANGLE_MAX_21L = 255;
 const INTERCEPT_MAX_DIST_NM = 25; const ON_LOCALIZER_THRESHOLD_PX = 0.5;
-const ON_LOCALIZER_THRESHOLD_NM = 0.07;
+const ON_LOCALIZER_THRESHOLD_NM = 0.05;
 const RUNWAY_THRESHOLD_DIST_PX = 5; let gameSpeedMultiplier = 1.0;
 const speedMultipliers = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 3, 5, 10];
 let isPaused = false;
@@ -1518,7 +1518,7 @@ function updateAircrafts(deltaTime) {
                 heading: d.initialHeading,
                 targetHeading: d.initialHeading,
                 speedKTS: 160, // Kalkış için tipik başlangıç hızı
-                altitude: 0, // Yerden başlar
+                altitude: 3100, // Yerden başlar
                 targetAltitude: d.targetAltitude,
                 rateOfDescent: 0,
                 rateOfClimb: d.rateOfClimb,
@@ -2839,30 +2839,61 @@ function showPopupForField(x, y, field) {
             };
             popup.appendChild(div);
         });
+    
     } else if (field === 'altitude') {
-        current = selectedAircraft.targetAltitude;
-        // FL010 (1000ft) - FL450 (45000ft), 500ft (5FL) aralıklarla
-        for (let flVal = 450; flVal >= 10; flVal -= 5) {
-            const altInFeet = flVal * 100;
-            const div = document.createElement('div');
-            div.textContent = formatFlightLevel(altInFeet);
-            if (altInFeet === current) div.classList.add('current-value');
-            div.onclick = () => {
-                if (selectedAircraft) {
-                    selectedAircraft.targetAltitude = altInFeet;
-                    // İrtifa değişiminde ROC/ROD'u otomatik ayarla
-                    if (selectedAircraft.altitude < altInFeet && selectedAircraft.rateOfClimb === 0) {
-                        selectedAircraft.rateOfClimb = aircraftPerformanceROC[selectedAircraft.type] || DEFAULT_CLIMB_RATE;
-                        selectedAircraft.rateOfDescent = 0;
-                    } else if (selectedAircraft.altitude > altInFeet && selectedAircraft.rateOfDescent === 0) {
-                        selectedAircraft.rateOfDescent = DEFAULT_ROD;
-                        selectedAircraft.rateOfClimb = 0;
-                    }
-                }
-                popup.style.display = 'none';
-            };
-            popup.appendChild(div);
+    current = selectedAircraft.targetAltitude; // selectedAircraft.targetAltitude, feet cinsinden olmalı
+    popup.innerHTML = ''; // Popup'ı her seferinde temizle (bu satır zaten olmalı veya en başa alınmalı)
+
+    const altitudeChoices = []; // İrtifa seçeneklerini tutacak bir dizi
+
+    // Standart FL'leri ekle (FL450 -> FL010, 5 FL adımlarla)
+    for (let flValueForLoop = 330; flValueForLoop >= 10; flValueForLoop -= 5) {
+        altitudeChoices.push({
+            valueInFeet: flValueForLoop * 100,
+            displayText: formatFlightLevel(flValueForLoop * 100)
+        });
+    }
+
+    // FL066'yı (6600 feet) ekle
+    const fl066InFeet = 6600;
+    // Eğer listede yoksa ekle (mevcut döngü 5'lik adımlarla gittiği için zaten olmayacaktır)
+    if (!altitudeChoices.some(choice => choice.valueInFeet === fl066InFeet)) {
+        altitudeChoices.push({
+            valueInFeet: fl066InFeet,
+            displayText: formatFlightLevel(fl066InFeet) // formatFlightLevel(6600) -> "F066" üretmeli
+        });
+    }
+
+    // Seçenekleri irtifaya göre büyükten küçüğe sırala
+    altitudeChoices.sort((a, b) => b.valueInFeet - a.valueInFeet);
+
+    // Sıralanmış seçenekleri popup'a ekle
+    altitudeChoices.forEach(choice => {
+        const altInFeet = choice.valueInFeet;
+        const div = document.createElement('div');
+        div.textContent = choice.displayText;
+
+        if (altInFeet === current) { // 'current' seçili uçağın mevcut hedef irtifası (feet cinsinden)
+            div.classList.add('current-value');
         }
+
+        div.onclick = () => {
+            if (selectedAircraft) {
+                selectedAircraft.targetAltitude = altInFeet;
+                // İrtifa değişiminde ROC/ROD'u otomatik ayarla (bu kısım sizde zaten vardı)
+                if (selectedAircraft.altitude < altInFeet && selectedAircraft.rateOfClimb === 0) {
+                    selectedAircraft.rateOfClimb = aircraftPerformanceROC[selectedAircraft.type] || DEFAULT_CLIMB_RATE;
+                    selectedAircraft.rateOfDescent = 0;
+                } else if (selectedAircraft.altitude > altInFeet && selectedAircraft.rateOfDescent === 0) {
+                    selectedAircraft.rateOfDescent = DEFAULT_ROD;
+                    selectedAircraft.rateOfClimb = 0;
+                }
+            }
+            popup.style.display = 'none';
+        };
+        popup.appendChild(div);
+    });
+
     } else if (field === 'rateOfDescent') { // Bu alan artık ROD/ROC olarak birleşik
         current = selectedAircraft.rateOfClimb > 0 ? -selectedAircraft.rateOfClimb : selectedAircraft.rateOfDescent; // Tırmanış negatif ROD gibi
         values = [3000, 2500, 2000, 1800, 1500, 1000, 500, 0, -500, -1000, -1500, -1800, -2000, -2500, -3000]; // Pozitif: Alçalma, Negatif: Tırmanma
@@ -3447,7 +3478,7 @@ function launchAircraft(runway, waypointName) {
 
     const type = aircraftTypes[Math.floor(Math.random() * aircraftTypes.length)];
     const initialSpeedKTS = 160; // Kalkış için tipik başlangıç hızı (knot)
-    const initialAltitudeFeet = 0; // Yerden başlar (pist seviyesi)
+    const initialAltitudeFeet = 3100; // Yerden başlar (pist seviyesi)
 
     // Kalkış sonrası tırmanılacak hedef Uçuş Seviyesi (FL)
     // Bu değer daha dinamik veya kullanıcı tarafından seçilebilir olabilir.
@@ -3760,10 +3791,11 @@ const infoPopupDetails = {
         <ul>
             <li>Uçakları localizer (LOC) hatlarına yönlendirerek piste yaklaştırın.</li>
             <li>Kuleye devir için uygun mesafede ve irtifada olduklarından emin olun.</li>
-            <li>Uçaklar arasında güvenli mesafeyi (yatay ve dikey) koruyun! (Airmiss uyarısına dikkat!)</li>
+            <li>Uçaklar arasında güvenli mesafeyi koruyun! (Airmiss uyarısına dikkat!)</li>
         </ul>
-        <p><strong>Son Güncellemeler (18 Mayıs 2025):  MUTLAKA OKUYUNUZ!!!</strong></p>
+        <p><strong>Son Güncellemeler (21 Mayıs 2025):  MUTLAKA OKUYUNUZ!!!</strong></p>
         <ul>
+		    <li>Kalkan uçaklar artık FL000 değil, meydan rakımı olan FL031 den kalkıyorlar. Ayrıca FL girme kısmına FL066 eklendi.</li>
 		    <li>Uçaklar waypointlere doğru açılarla gelip waypointten sonra IAF'ye doğru açı ile dönüyorlar örneğin TELVO 349</li>
             <li>Artık eğer farenizde forward tuşu varsa (nitadaki ölçüm yapmaya yarayan tuş) bu tuşu kullanarak ölçümü başlatabilirsiniz.</li>
             <li>Kalkış yapan uçaklar için "LTXX" trajektör gösterimi eklendi LTXX'e basarak kalkış uçaklarının trajectory'sini açıp kapatabilirsiniz.</li>
