@@ -599,6 +599,42 @@
     background-color: rgba(0, 255, 0, 0.15); /* Hover efekti */
 }
 	
+/* ... mevcut stillerinizin altına ... */
+
+.popup-footer-controls {
+    margin-top: 25px; /* Üstten boşluk */
+    display: flex;
+    flex-wrap: wrap; /* Küçük ekranlarda alt satıra kayabilir */
+    justify-content: center; /* Ortala */
+    align-items: center; /* Dikeyde ortala */
+    gap: 15px; /* Onay grubu ile buton arasında boşluk */
+}
+
+.acknowledge-group {
+    display: flex;
+    align-items: center;
+}
+
+#infoPopupAcknowledgeCheckbox {
+    margin-right: 8px; /* Onay kutusu ile etiketi arasına boşluk */
+    transform: scale(1.3); /* Onay kutusunu biraz büyütelim */
+    cursor: pointer;
+}
+
+.acknowledge-group label {
+    font-size: 14px;
+    color: #f0f0f0; /* Açık renk metin, temanıza göre ayarlayın */
+    cursor: pointer;
+    user-select: none; /* Metnin seçilmesini engelle */
+}
+
+#infoPopupCloseButton:disabled {
+    background-color: #5a5a5a; /* Devre dışı buton rengi */
+    border-color: #4a4a4a;
+    color: #888;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
 </style>
 	
 	
@@ -744,7 +780,13 @@
         <div id="infoPopupMessage">
             <p>Yükleniyor...</p>
         </div>
-        <button id="infoPopupCloseButton" class="control-button">Tamam</button>
+        <div class="popup-footer-controls">
+            <span class="acknowledge-group">
+                <input type="checkbox" id="infoPopupAcknowledgeCheckbox">
+                <label for="infoPopupAcknowledgeCheckbox">Okudum, Anladım</label>
+            </span>
+            <button id="infoPopupCloseButton" class="control-button" disabled>Tamam</button>
+        </div>
     </div>
 </div>
 
@@ -3846,69 +3888,73 @@ ilgililer hakkında hukuki ve cezai yollara başvurulacaktır.</li>
 };
 
 function displayInfoPopup() {
-    // console.log("[displayInfoPopup] Fonksiyon başlatıldı."); // Test için log
     const popupOverlay = document.getElementById('infoPopupOverlay');
     const popupTitleEl = document.getElementById('infoPopupTitle');
     const popupMessageEl = document.getElementById('infoPopupMessage');
     const popupCloseBtn = document.getElementById('infoPopupCloseButton');
+    const acknowledgeCheckbox = document.getElementById('infoPopupAcknowledgeCheckbox'); // Yeni onay kutusu
 
-    if (!popupOverlay || !popupTitleEl || !popupMessageEl || !popupCloseBtn) {
+    if (!popupOverlay || !popupTitleEl || !popupMessageEl || !popupCloseBtn || !acknowledgeCheckbox) {
         console.error("[displayInfoPopup] HATA: Pop-up elementlerinden biri veya birkaçı bulunamadı! HTML ID'lerini kontrol edin.");
         return;
     }
-    // console.log("[displayInfoPopup] Tüm pop-up DOM elementleri bulundu.");
 
-    // localStorage kontrolü ve kaydı kaldırıldığı için pop-up her zaman gösterilecek.
-
-    // Pop-up içeriğini ayarla
-    // infoPopupDetails objesinin en güncel halini kullanmak için,
-    // eğer bu obje başka bir yerde dinamik olarak güncelleniyorsa,
-    // buradaki atamadan önce güncel olduğundan emin olun.
-    // Şimdilik global tanımlı olduğunu varsayıyoruz.
-    // Tarih ve versiyonu dinamik olarak almak için:
-    let messageContent = infoPopupDetails.messageHTML;
-    // Eğer mesaj içinde dinamik yer tutucular kullanmak isterseniz (örneğin {currentDate}):
-    // messageContent = messageContent.replace('{currentDate}', new Date().toLocaleDateString('tr-TR'));
-    // Şimdilik infoPopupDetails içindeki statik metni kullanıyoruz ama dinamik tarih eklemesi yapıldı.
+    // Pop-up içeriğini ayarla (bu kısım sizde zaten var)
     const dynamicDateVersion = `(${new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })} - v${infoPopupDetails.version})`;
     popupTitleEl.textContent = infoPopupDetails.title;
-    // Son güncellemeler başlığını dinamik hale getirelim
     popupMessageEl.innerHTML = infoPopupDetails.messageHTML.replace(
-        /\(.*\s-\sv\d+\.\d+\.\d+\):/, // Örnek: (18 Mayıs 2025 - v1.0.3): gibi bir deseni bulur
+        /\(.*\s-\sv\d+\.\d+\.\d+\):/, 
         dynamicDateVersion + ":"
     );
 
+    // Başlangıçta "Tamam" butonunu devre dışı bırak ve onay kutusunu işaretsiz yap
+    if (popupCloseBtn) { // Butonun varlığını kontrol et
+      popupCloseBtn.disabled = true;
+    }
+    if (acknowledgeCheckbox) { // Onay kutusunun varlığını kontrol et
+      acknowledgeCheckbox.checked = false;
+    }
 
-    // console.log("[displayInfoPopup] Pop-up başlığı ve mesajı ayarlandı.");
 
-    // Pop-up'ı göster
+    // Onay kutusunun durumuna göre "Tamam" butonunu etkinleştir/devre dışı bırak
+    if (acknowledgeCheckbox && popupCloseBtn) {
+        acknowledgeCheckbox.addEventListener('change', function() {
+            popupCloseBtn.disabled = !this.checked;
+        });
+    }
+
+    // Pop-up'ı göster (bu kısım sizde zaten var)
     popupOverlay.style.display = 'flex';
-    // console.log("[displayInfoPopup] popupOverlay.style.display 'flex' olarak ayarlandı.");
-    
-    setTimeout(() => { // CSS geçişinin düzgün çalışması için class eklemesini küçük bir gecikmeyle yap
+    setTimeout(() => {
         popupOverlay.classList.add('visible');
-        // console.log("[displayInfoPopup] 'visible' class'ı popupOverlay'e eklendi.");
-    }, 20); // Küçük bir gecikme yeterli
+    }, 20);
 
     // Kapatma butonuna olay dinleyici ekle
-    // Eğer pop-up tekrar tekrar gösteriliyorsa ve displayInfoPopup her seferinde çağrılıyorsa,
-    // {once: true} kullanmak veya olay dinleyicisini eklemeden önce removeEventListener ile temizlemek iyi bir pratiktir.
-    // Mevcut senaryoda, sayfa her yüklendiğinde displayInfoPopup çağrıldığı için {once:true} uygundur,
-    // çünkü her sayfa yüklemesinde buton için yeni bir dinleyici (tek seferlik) eklenir.
-    const closeButtonClickHandler = () => {
-        // console.log("[displayInfoPopup] Kapatma butonuna tıklandı.");
-        popupOverlay.classList.remove('visible');
-        setTimeout(() => {
-            popupOverlay.style.display = 'none';
-        }, 300); // CSS transition süresiyle (0.3s) aynı olmalı
-        // localStorage'a kayıt işlemi kaldırıldı.
-        popupCloseBtn.removeEventListener('click', closeButtonClickHandler); // Dinleyiciyi kaldır (once:true zaten bunu yapar ama emin olmak için)
-    };
-    
-    // Önceki dinleyiciyi kaldır (eğer varsa ve once:true kullanılmıyorsa)
-    // popupCloseBtn.removeEventListener('click', closeButtonClickHandler); // Bu satıra gerek yok eğer aşağıdaki {once: true} kullanılıyorsa
-    popupCloseBtn.addEventListener('click', closeButtonClickHandler, { once: true });
-    // console.log("[displayInfoPopup] Kapatma butonu olay dinleyicisi eklendi.");
+    if (popupCloseBtn) {
+        const closeButtonClickHandler = () => {
+            // Buton zaten sadece etkin olduğunda tıklanabilir,
+            // ama ek bir kontrol isterseniz: if (acknowledgeCheckbox.checked)
+            popupOverlay.classList.remove('visible');
+            setTimeout(() => {
+                popupOverlay.style.display = 'none';
+            }, 300); // CSS transition süresiyle (0.3s) aynı olmalı
+            
+            // Dinleyiciyi kaldır (once: true zaten bunu yapar ama emin olmak için)
+            // Bu fonksiyon her pop-up gösterildiğinde çağrılıyorsa, dinleyiciyi kaldırmak iyi bir pratiktir.
+            // Ancak {once: true} kullanıyorsanız, buna gerek kalmaz.
+            // Eğer {once: true} kullanmıyorsanız:
+            // popupCloseBtn.removeEventListener('click', closeButtonClickHandler);
+        };
+        
+        // Önceki dinleyiciyi (varsa) kaldırıp yenisini eklemek daha güvenli olabilir
+        // veya {once: true} kullanmaya devam edebilirsiniz.
+        // Eğer bu fonksiyon birden fazla kez çağrılma potansiyeli varsa,
+        // dinleyicilerin birikmemesi için dikkatli olun.
+        // Şimdilik, {once: true} ile devam edelim, bu en temiz yöntemdir
+        // eğer pop-up her açıldığında bu fonksiyon baştan çalışıyorsa.
+        popupCloseBtn.removeEventListener('click', closeButtonClickHandler); // Öncekini temizle (önlem olarak)
+        popupCloseBtn.addEventListener('click', closeButtonClickHandler, { once: true });
+    }
 }
 
 // Bu fonksiyonun initializeApp() fonksiyonunuzun sonunda veya
