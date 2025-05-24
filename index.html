@@ -2628,7 +2628,7 @@ function updateAircraftLabelPositionDOM(ac) {
 
 
 function drawRadar() {
-    // 1. Canvas'ı Temizle (DPR'yi hesaba katarak)
+    // 1. Canvas'ı Temizle ve Temel Transformları Sıfırla
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0); // Transformu sıfırla
     ctx.clearRect(0, 0, canvas.width, canvas.height); // Gerçek piksel boyutlarında temizle
@@ -2636,18 +2636,60 @@ function drawRadar() {
 
     // 2. Gerekli Veri Güncellemeleri (Çizimden önce, eğer varsa)
     if (typeof updateMeasurementData === "function") {
-        updateMeasurementData(); // Ölçüm verilerini güncelleyen fonksiyonunuz (varsa)
+        updateMeasurementData();
     }
     if (typeof updateTopCenterButtonStates === "function") {
-        updateTopCenterButtonStates(); // Buton durumlarını güncelleyen fonksiyonunuz (varsa)
+        updateTopCenterButtonStates();
     }
+
+    // --- MERKEZİ HIGHLIGHT (PARLAMA) MANTIĞI ---
+    // Bu blok, hem canvas çizimi (drawAircraft) hem de DOM etiketi (updateAircraftLabelPositionDOM)
+    // için ac.highlighted özelliğini ayarlar.
+    aircrafts.forEach(ac => {
+        let shouldBeHighlightedThisFrame = false; // Varsayılan olarak parlama yok
+
+        if (typeof isMeasuring !== 'undefined' && isMeasuring) {
+            if (typeof measurementStartPoint !== 'undefined' && !measurementStartPoint) {
+                // ÖLÇÜM AŞAMA 1: İlk nokta seçiliyor
+                // Sadece fareyle üzerine gelinen uçak parlasın (eğer varsa)
+                if (typeof hoveredAircraftForMeasure !== 'undefined' && hoveredAircraftForMeasure && hoveredAircraftForMeasure.id === ac.id) {
+                    shouldBeHighlightedThisFrame = true;
+                }
+            } else if (typeof measurementStartPoint !== 'undefined' && measurementStartPoint) {
+                // ÖLÇÜM AŞAMA 2: İkinci nokta seçiliyor (ilk nokta zaten seçilmiş)
+                // İlk seçilen nokta (eğer bir uçaksa) parlak kalmaya devam etsin
+                if (measurementStartPoint.type === 'aircraft' && measurementStartPoint.id === ac.id) {
+                    shouldBeHighlightedThisFrame = true;
+                }
+                // İsteğe bağlı ve ek olarak: İkinci nokta için üzerine gelinen uçak da parlatılabilir
+                if (typeof hoveredAircraftForMeasure !== 'undefined' && hoveredAircraftForMeasure && 
+                    hoveredAircraftForMeasure.id === ac.id) {
+                    // Eğer üzerine gelinen uçak zaten başlangıç noktası değilse VEYA başlangıç noktası olsa bile
+                    // (yukarıdaki koşul zaten onu true yapardı, bu tekrar true yapar, sorun değil)
+                    // ya da sadece ikinci nokta için farklı bir stil vermek istemiyorsanız bu yeterli.
+                    shouldBeHighlightedThisFrame = true;
+                }
+            }
+        }
+        // Genel seçili uçak için parlama (selectedAircraft ile ilgili)
+        // Eğer `selectedAircraft`'ın da bir `glow` efekti olması isteniyorsa,
+        // ve bu `ac.highlighted` üzerinden yönetiliyorsa, buraya eklenebilir:
+        // else if (typeof selectedAircraft !== 'undefined' && selectedAircraft && selectedAircraft.id === ac.id) {
+        //    shouldBeHighlightedThisFrame = true;
+        // }
+        // Ancak, `updateAircraftLabelPositionDOM` zaten `selected` class'ını yönetiyor.
+        // `glow` genellikle geçici bir vurgu (hover, ölçüm) için kullanılır.
+
+        ac.highlighted = shouldBeHighlightedThisFrame;
+    });
+    // --- MERKEZİ HIGHLIGHT MANTIĞI SONU ---
 
     // 3. Dünya Koordinatlarına Geçiş (Pan ve Zoom)
     ctx.save();
     ctx.translate(panX, panY);
     ctx.scale(zoom, zoom);
 
-    // 4. Arka Plan Görselini Çiz (WORLD_ORIGIN'e göre)
+    // 4. Arka Plan Görselini Çiz
     if (backgroundImage.complete && backgroundImage.naturalWidth > 0) {
         const tDiamPx = nmToWorldPixels(innerCircleRadiusNM) * 2;
         const sF = tDiamPx / (backgroundImage.naturalWidth * imageInnerCircleDiameterFraction);
@@ -2660,20 +2702,27 @@ function drawRadar() {
 
     // 5. Sabit Harita Elemanlarını Çiz
     if (typeof drawRadarCircles === "function") drawRadarCircles();
-    if (typeof drawDirectionLines === "function") drawDirectionLines(); // Yön çizgileri (varsa)
+    if (typeof drawDirectionLines === "function") drawDirectionLines();
     if (typeof drawWaypoints === "function") drawWaypoints();
     if (typeof drawRunwayAndLocalizers === "function") drawRunwayAndLocalizers();
 
     // 6. Ölçüm Araçlarıyla İlgili Canvas Çizimleri
+    // Geçici ölçüm çizgisi (fareyi takip eden)
     if (typeof isMeasuring !== 'undefined' && isMeasuring && typeof measurementStartPoint !== 'undefined' && measurementStartPoint) {
         if (typeof drawTemporaryMeasurementLine === "function") drawTemporaryMeasurementLine();
-        // Ölçüm başlangıç noktasını vurgula
-        if (measurementStartPoint.type === 'aircraft') {
-            const ac = aircrafts.find(a => a.id === measurementStartPoint.id);
-            if (ac && typeof drawMeasurementHighlight === "function") drawMeasurementHighlight(ac); // Seçili başlangıç uçağını vurgula
-        } else if (measurementStartPoint.type === 'runwayCenter') { // Pist merkezi seçiliyse vurgula
+    }
+    // Pist merkezi için canvas üzerine hover/seçim çizimleri
+    if (typeof isMeasuring !== 'undefined' && isMeasuring) {
+        if (!measurementStartPoint && typeof hoveredRunwayCenterForMeasure !== 'undefined' && hoveredRunwayCenterForMeasure) {
             ctx.save();
-            ctx.strokeStyle = 'cyan'; ctx.lineWidth = 2 / zoom;
+            ctx.fillStyle = 'rgba(0, 255, 255, 0.3)'; // Pist merkezi hover rengi
+            ctx.beginPath();
+            ctx.arc(WORLD_ORIGIN_X, WORLD_ORIGIN_Y, 8 / zoom, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.restore();
+        } else if (measurementStartPoint && measurementStartPoint.type === 'runwayCenter') {
+            ctx.save();
+            ctx.strokeStyle = 'cyan'; ctx.lineWidth = 2 / zoom; // Pist merkezi başlangıç noktası rengi
             const crosshairSize = 6 / zoom;
             ctx.beginPath();
             ctx.moveTo(WORLD_ORIGIN_X - crosshairSize, WORLD_ORIGIN_Y); ctx.lineTo(WORLD_ORIGIN_X + crosshairSize, WORLD_ORIGIN_Y);
@@ -2682,24 +2731,6 @@ function drawRadar() {
             ctx.restore();
         }
     }
-    // Ölçüm için hover vurgusu (henüz ilk nokta seçilmemişken)
-    if (typeof isMeasuring !== 'undefined' && isMeasuring && (!measurementStartPoint) &&
-        ((typeof hoveredAircraftForMeasure !== 'undefined' && hoveredAircraftForMeasure) || (typeof hoveredRunwayCenterForMeasure !== 'undefined' && hoveredRunwayCenterForMeasure))) {
-        aircrafts.forEach(ac => { // Önceki vurguları temizle (veya `highlighted` özelliğini yönet)
-             ac.highlighted = (hoveredAircraftForMeasure && ac.id === hoveredAircraftForMeasure.id);
-        });
-        if (hoveredRunwayCenterForMeasure) {
-            ctx.save();
-            ctx.fillStyle = 'rgba(0, 255, 255, 0.3)'; // Hafif hover efekti
-            ctx.beginPath();
-            ctx.arc(WORLD_ORIGIN_X, WORLD_ORIGIN_Y, 8 / zoom, 0, 2 * Math.PI);
-            ctx.fill();
-            ctx.restore();
-        }
-    } else if (typeof isMeasuring !== 'undefined' && !isMeasuring) { // Ölçüm yapılmıyorsa tüm `highlighted` bayraklarını temizle
-        aircrafts.forEach(ac => { ac.highlighted = false; });
-    }
-
     // Kayıtlı Ölçüm Çizgilerini Çiz
     if (typeof measurements !== 'undefined') {
         measurements.forEach(m => {
@@ -2712,36 +2743,29 @@ function drawRadar() {
         drawPlacementMarker(pendingAircraftLocation);
     }
 
-    // 8. Uçakları, Hız Vektörlerini ve Trajektör Çizgilerini Çiz
+    // 8. Uçakları, İzlerini, Hız Vektörlerini ve Trajektör Çizgilerini Çiz
     aircrafts.forEach(ac => {
-        // ÖNCEKİ POZİSYON İZİNİ ÇİZ (eğer varsa)
-        if (typeof drawAircraftTrail === "function") {
-            drawAircraftTrail(ac); // Önce izi çiz
+        if (typeof drawAircraftTrail === "function") { // Önce izi çiz
+            drawAircraftTrail(ac);
+        }
+        if (typeof drawAircraft === "function") { // Sonra uçağı (ac.highlighted'ı kullanır)
+            drawAircraft(ac);
         }
 
-        if (typeof drawAircraft === "function") {
-            drawAircraft(ac); // Sonra uçağın kendisini çiz (izin üzerinde kalır)
-        }
-
-        // --- YENİ: Her Uçak İçin Ayrı Hız Vektörü Kontrolü ---
         let shouldShowVectorForThisAc = false;
         if (ac.forceVectorDisplayState === true) {
-            shouldShowVectorForThisAc = true;     // Bu uçak için zorla AÇIK
+            shouldShowVectorForThisAc = true;
         } else if (ac.forceVectorDisplayState === false) {
-            shouldShowVectorForThisAc = false;    // Bu uçak için zorla KAPALI
-        } else { // ac.forceVectorDisplayState === null (varsayılan)
-            // showVectors global değişkeniniz olmalı (sağ üstteki ana butonla kontrol edilen)
+            shouldShowVectorForThisAc = false;
+        } else {
             if (typeof showVectors !== 'undefined') {
-                shouldShowVectorForThisAc = showVectors; // Global ayarı kullan
+                shouldShowVectorForThisAc = showVectors;
             }
         }
-
         if (shouldShowVectorForThisAc && typeof drawSpeedVector === "function") {
-            drawSpeedVector(ac); // Hız vektörünü çiz
+            drawSpeedVector(ac);
         }
-        // --- Hız Vektörü Kontrolü Sonu ---
 
-        // Kalkış yapan uçaklar için trajektör çizgisi (ac.showTrajectory ile kontrol edilir)
         if (typeof drawTrajectoryLine === "function") {
             drawTrajectoryLine(ac);
         }
@@ -2750,31 +2774,56 @@ function drawRadar() {
     // 9. Dünya Koordinat Transformasyonunu Geri Al
     ctx.restore();
 
-    // 10. Ekran Koordinatlarında Çizilecekler / DOM Güncellemeleri
-    // (Bu kısım pan/zoom'dan etkilenmez, doğrudan ekran pikselleriyle çalışır)
-
-    // Geçici ölçüm etiketi (DOM elemanı)
+    // 10. Ekran Koordinatlarında Çalışan DOM Güncellemeleri
+    // Geçici ölçüm etiketi DOM elementi
     if (typeof isMeasuring !== 'undefined' && isMeasuring && typeof measurementStartPoint !== 'undefined' && measurementStartPoint && typeof updateTemporaryMeasurementLabel === "function") {
         updateTemporaryMeasurementLabel();
     } else {
-        if (typeof tempMeasurementLabel !== 'undefined' && tempMeasurementLabel) { // tempMeasurementLabel DOM elementiniz
+        if (typeof tempMeasurementLabel !== 'undefined' && tempMeasurementLabel) {
             tempMeasurementLabel.style.display = 'none';
         }
     }
 
-    // Uçak Etiketleri (DOM elemanları) - Pozisyonları ve içerikleri güncellenir
+    // Uçak Etiketleri DOM (updateAircraftLabelPositionDOM, ac.highlighted'ı kullanarak .glow sınıfını yönetir)
     aircrafts.forEach(ac => {
         if (typeof updateAircraftLabelPositionDOM === "function") updateAircraftLabelPositionDOM(ac);
     });
 
-    // Ölçüm Etiketleri (DOM elemanları) - Pozisyonları ve içerikleri güncellenir
+    // Ölçüm Etiketleri DOM
     if (typeof measurements !== 'undefined') {
         measurements.forEach(m => {
-            if (typeof updateMeasurementLabelPositionDOM === "function") updateMeasurementLabelPositionDOM(m);
+            // updateMeasurementLabelPositionDOM ölçüm etiketleri için de benzer bir highlight yönetimine sahip olabilir
+            // veya ölçüm etiketleri için ayrı bir updateMeasurementDOMForMeasurement gibi bir fonksiyon olabilir.
+            // Şimdilik genel updateAircraftLabelPositionDOM'u varsayıyorum ama bu ölçümler için ayrı olmalı.
+            // Doğrusu:
+            if (typeof updateMeasurementLabelPositionDOM === "function") { // Bu fonksiyon ölçüm etiketleri için ayrı olmalı
+                 // updateMeasurementLabelPositionDOM(m); // Yanlış - bu uçak içindi.
+                 // Doğrusu:
+                 // if (typeof updateMeasurementLabelDOM === "function") updateMeasurementLabelDOM(m);
+                 // Eğer updateAircraftLabelPositionDOM hem uçak hem ölçüm içinse (pek olası değil) o zaman kalabilir.
+                 // Sizin kodunuzda ölçüm için 'updateMeasurementLabelPositionDOM' adlı ayrı bir fonksiyon vardı.
+            }
+            // Bir önceki cevaptaki `updateMeasurementLabelPositionDOM(measurement)` fonksiyonunu kastediyorsanız:
+            if(typeof updateMeasurementLabelPositionDOM_forMeasurement === "function") { // Fonksiyon adını netleştirmek için
+                // updateMeasurementLabelPositionDOM_forMeasurement(m);
+            } else if (typeof updateMeasurementLabelPositionDOM === "function" && m.start && m.end) {
+                // Eğer tek bir fonksiyon her ikisini de yönetiyorsa (tip kontrolü yaparak),
+                // ya da ölçüm etiketleri için ayrı bir update fonksiyonunuz varsa onu çağırın.
+                // Şimdilik, measurement için de aynı fonksiyonu çağıracağınızı varsayıyorum,
+                // ama bu genellikle ayrı fonksiyonlar gerektirir.
+                // Geçici olarak, önceki cevaptaki adı kullanarak:
+                // updateMeasurementLabelPositionDOM(m); // measurement için olan versiyonu kastediyorum.
+            }
+             // Kullanıcının tam kodunda `updateMeasurementLabelPositionDOM` vardı ve `measurements.forEach` içinde çağrılıyordu
+             // Bu fonksiyon hem uçak hem ölçüm için overload edilmiş olmalı ya da tip kontrolü yapmalı.
+             // Şimdilik orijinaldeki gibi bırakıyorum:
+             if (typeof updateMeasurementLabelPositionDOM === "function") updateMeasurementLabelPositionDOM(m);
+
+
         });
     }
 
-    // Sürüklenen Etiketler için Bağlantı Çizgileri (Ekran koordinatlarında çizilir)
+    // Sürüklenen Etiketler için Bağlantı Çizgileri
     aircrafts.forEach(ac => {
         if (ac.labelDragged && ac.labelElement && typeof drawConnectionLine === "function") {
             drawConnectionLine(ac, 'aircraft');
@@ -2788,11 +2837,14 @@ function drawRadar() {
         });
     }
     
-    // Air Indicator Penceresini Güncelle (varsa)
     if (typeof updateAirIndicatorWindow === "function") {
         updateAirIndicatorWindow();
     }
 }
+
+
+
+
 
 function updateAirIndicatorWindow() {
     if (!airIndicatorWindow || !selectedAircraft) {
