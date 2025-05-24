@@ -1331,58 +1331,73 @@ function drawRunwayAndLocalizers() {
     if (showLocalizerRight) { drawLocalizerBeam(-1); }
 }
 
-
 function drawLocalizerBeam(side) {
-    // 'side' parametresine göre hangi localizer'ın çizileceğini belirle
-    // Kodunuzda side === 1 için showLocalizerLeft (21L) ve side === -1 için showLocalizerRight (033R) kullanılıyor.
-    // Bu mantığa göre doğru kursu seçiyoruz.
     let angleDeg;
-    if (side === 1) { // Genellikle sol localizer (örneğin 21L için)
-        angleDeg = localizerCourse21L; // Kodunuzdaki showLocalizerLeft (btnLoc21L) ile ilişkili kurs
-    } else { // Genellikle sağ localizer (örneğin 03R/033 için)
-        angleDeg = localizerCourse033Right; // Kodunuzdaki showLocalizerRight (btnLocRight) ile ilişkili kurs
+    // Hangi localizer'ın çizileceğine ve hangi açının kullanılacağına karar verilir:
+    // Sizin kodunuzdaki mevcut mantığa göre:
+    // "LOC 03R" butonu showLocalizerLeft'i tetikler, bu da drawLocalizerBeam(1)'i çağırır.
+    // "LOC 21L" butonu showLocalizerRight'i tetikler, bu da drawLocalizerBeam(-1)'i çağırır.
+    if (side === 1) { 
+        // Bu blok, "LOC 03R" butonunun tetiklediği çizimle ilgilidir.
+        // Not: Kodunuzda burada localizerCourse21L (213 derece) kullanılıyor olabilir,
+        // bu durum buton ismiyle (03R) çelişiyor gibi görünse de,
+        // isteğiniz "LOC 03R butonu" ile ilgili olduğu için side === 1 koşulunu kullanıyoruz.
+        angleDeg = localizerCourse21L; // Veya "LOC 03R" için doğru olan kurs (örn: localizerCourse033Right)
+                                       // Eğer buton isimleri ve kurslar arasında bir karışıklık varsa burayı düzeltmek gerekebilir.
+                                       // Şimdilik mevcut yapınıza göre devam ediyorum.
+    } else { // side === -1 (veya farklı bir değer)
+        // Bu blok, diğer localizer ("LOC 21L" butonu) ile ilgilidir.
+        angleDeg = localizerCourse033Right; // Veya "LOC 21L" için doğru olan kurs (örn: localizerCourse21L)
     }
 
-    const localizerRadialRad = toRadians(angleDeg); // Localizer'ın manyetik yönünü radyana çevir
+    const localizerRadialRad = toRadians(angleDeg);
+    const defaultDotColor = 'rgba(128, 0, 32, 0.8)'; // Diğer noktaların rengi
+    const highlightDotColor = '#ffffff';             // Vurgulanacak noktanın rengi (BEYAZ)
+    const dotRadius = 1.5 / zoom;
+    const lineStrokeStyle = 'rgba(128, 0, 32, 0.4)';
+    const lineWidth = 1 / zoom;
+    const points = [];
 
-    const defaultDotColor = 'rgba(128, 0, 32, 0.8)'; // Noktaların varsayılan rengi
-    const highlightDotColor = '#ffffff';             // 12 NM noktasının vurgu rengi
-    const dotRadius = 2 / zoom;                      // Noktaların yarıçapı (zoom'a göre ölçeklenir)
-    const lineStrokeStyle = 'rgba(128, 0, 32, 0.4)'; // Noktaları birleştiren çizginin rengi
-    const lineWidth = 1 / zoom;                      // Çizgi kalınlığı
+    // Hangi milin vurgulanacağını belirle:
+    let mileToHighlight;
+    if (side === 1) { // "LOC 03R" butonuyla açılan grid (drawLocalizerBeam(1) çağrısı)
+        mileToHighlight = 13; // 13. mili vurgula
+    } else { // Diğer localizer gridi (örneğin drawLocalizerBeam(-1) çağrısı)
+        mileToHighlight = 12; // 12. mili vurgulamaya devam et (veya isteğinize göre değiştirin)
+    }
 
-    const points = []; // Çizilecek noktaların koordinatlarını saklamak için dizi
-
-    // Localizer boyunca her 1 NM'de bir nokta çiz
     for (let i = 1; i <= localizerLengthNM; i++) {
-        // DEĞİŞİKLİK BURADA: Noktanın X ve Y koordinatları WORLD_ORIGIN referans alınarak hesaplanıyor
         const pointWorldX = WORLD_ORIGIN_X + Math.sin(localizerRadialRad) * nmToWorldPixels(i);
-        const pointWorldY = WORLD_ORIGIN_Y - Math.cos(localizerRadialRad) * nmToWorldPixels(i); // Y ekseni ters olduğu için çıkarıyoruz
+        const pointWorldY = WORLD_ORIGIN_Y - Math.cos(localizerRadialRad) * nmToWorldPixels(i);
+        points.push({ x: pointWorldX, y: pointWorldY });
 
-        points.push({ x: pointWorldX, y: pointWorldY }); // Noktayı diziye ekle
-
-        // Noktayı çiz
         ctx.beginPath();
         ctx.arc(pointWorldX, pointWorldY, dotRadius, 0, 2 * Math.PI);
-        // 12 NM noktasını farklı renkte vurgula
-        ctx.fillStyle = (i === 12) ? highlightDotColor : defaultDotColor;
+
+        // Belirlenen mile göre rengi ayarla
+        if (i === mileToHighlight) {
+            ctx.fillStyle = highlightDotColor;
+        } else {
+            ctx.fillStyle = defaultDotColor;
+        }
         ctx.fill();
     }
 
-    // Noktaları birleştiren ince bir çizgi çiz (isteğe bağlı, görselleştirme için)
+    // Noktaları birleştiren ince çizgi (isteğe bağlı)
     if (points.length > 1) {
-        ctx.save(); // Mevcut çizim durumunu kaydet
+        ctx.save();
         ctx.strokeStyle = lineStrokeStyle;
         ctx.lineWidth = lineWidth;
         ctx.beginPath();
-        ctx.moveTo(points[0].x, points[0].y); // İlk noktadan başla
+        ctx.moveTo(points[0].x, points[0].y);
         for (let i = 1; i < points.length; i++) {
-            ctx.lineTo(points[i].x, points[i].y); // Sonraki noktalara çizgi çek
+            ctx.lineTo(points[i].x, points[i].y);
         }
-        ctx.stroke(); // Çizgiyi çiz
-        ctx.restore(); // Önceki çizim durumuna geri dön
+        ctx.stroke();
+        ctx.restore();
     }
 }
+
 function drawAircraft(ac) {
     ctx.save();
     ctx.translate(ac.x, ac.y);
@@ -1415,7 +1430,7 @@ function drawSpeedVector(ac) {
     const baseLineWidth = 1 / zoom;
     ctx.lineWidth = baseLineWidth * 1.3;
 
-    const arrowSize = 8 / zoom;
+    const arrowSize = 6.2 / zoom;
     const arrowAngleRad = Math.PI / 8; // Okun yarım açısı
 
     for (let i = 0; i < totalMinutes; i++) {
@@ -1530,7 +1545,7 @@ function drawTemporaryMeasurementLine() {
     }
     ctx.save(); ctx.beginPath(); ctx.moveTo(startX, startY); ctx.lineTo(worldMousePos.x, worldMousePos.y);
     ctx.strokeStyle = 'cyan';
-    ctx.lineWidth = (1.5 * 1.5) / zoom; // Kalınlığı 1.5x artırıldı (2.25)
+    ctx.lineWidth = 1 / zoom;
     ctx.setLineDash([4 / zoom, 4 / zoom]); ctx.stroke(); ctx.setLineDash([]); ctx.restore();
 
     const pointRadius = (3 / zoom) * 1.5; // Nokta yarıçapını da artır
@@ -1543,7 +1558,7 @@ function drawMeasurementLine(measurement) {
     ctx.moveTo(measurement.start.x, measurement.start.y);
     ctx.lineTo(measurement.end.x, measurement.end.y);
     ctx.strokeStyle = 'cyan';
-    ctx.lineWidth = (1.5 * 1.5) / zoom; // Kalınlığı 1.5x artırıldı (2.25)
+    ctx.lineWidth = 1.5 / zoom;
     ctx.stroke(); ctx.restore();
 
     const pointRadius = (2 / zoom) * 1.5; // Nokta yarıçapını da artır
